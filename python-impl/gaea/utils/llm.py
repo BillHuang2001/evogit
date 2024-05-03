@@ -5,7 +5,7 @@ Utility functions for the controlling LLM models.
 import logging
 import transformers
 from transformers import (
-    AutoModel,
+    AutoModelForCausalLM,
     AutoTokenizer,
     Conversation,
 )
@@ -16,18 +16,21 @@ class HuggingfaceModel:
 
     def __init__(
         self,
-        model,  # e.g. meta-llama/Meta-Llama-3-8B
+        model,  # e.g. meta-llama/Meta-Llama-3-8B-Instruct
         device_map="auto",
         trust_remote_code=False,
         num_workers=1,
     ):
         import torch
+
         tokenizer = AutoTokenizer.from_pretrained(
             model, trust_remote_code=trust_remote_code
         )
-        llm = torch.compile(AutoModel.from_pretrained(
-            model, trust_remote_code=trust_remote_code, device_map=device_map
-        ))
+        llm = torch.compile(
+            AutoModelForCausalLM.from_pretrained(
+                model, trust_remote_code=trust_remote_code, device_map=device_map
+            )
+        )
         self.chatbot = transformers.pipeline(
             "conversational",
             model=llm,
@@ -37,7 +40,7 @@ class HuggingfaceModel:
             num_workers=num_workers,
         )
 
-    def query(self, queries):
+    def query(self, seeds, queries):
         conversations = [Conversation(query) for query in queries]
         conversations = self.chatbot(conversations)
         responses = [
