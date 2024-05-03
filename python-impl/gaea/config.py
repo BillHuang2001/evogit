@@ -4,8 +4,8 @@ from typing import Optional
 
 @dataclass(frozen=True)
 class GAEAConfig:
-    llm_names: list[str]
-    device_maps: list[str]
+    llm_name: str
+    device_map: str
     git_dir: str
     seed_file: str
     filename: str

@@ -32,7 +32,7 @@ def push_all_branches(config: GAEAConfig):
     pass
 
 
-def evaluate(config: GAEAConfig, tag: str, cmd: list[str], timeout=60, sandbox=True):
+def evaluate(config: GAEAConfig, tag: str, cmd: list[str], handler: callable, timeout=60, sandbox=True):
     """Evaluate the the result of the individual.
 
     Parameters
@@ -45,15 +45,17 @@ def evaluate(config: GAEAConfig, tag: str, cmd: list[str], timeout=60, sandbox=T
         List of strings. The command to run the code.
         For example ["python", "main.py"]
         The command will be run with the current working directory set to the branch directory.
+    handler
+        A function that takes the result of the command and return the fitness.
+        The result is a dictionary of the following: {
+            "stdout": str,
+            "stderr": str,
+            "timeout": bool
+        }
     """
     if sandbox:
         # run the command in a bubblewrap sandbox
         cmd = ["bubblewrap_run.sh"] + cmd
-
-    file = git.read_file(config, tag)
-    return float(len(file.split("\n")))
-
-    git.checkout(config, tag)
 
     try:
         completed_proc = subprocess.run(
@@ -63,19 +65,24 @@ def evaluate(config: GAEAConfig, tag: str, cmd: list[str], timeout=60, sandbox=T
             timeout=timeout,
         )
         stdout = completed_proc.stdout.decode("utf-8")
+        stderr = completed_proc.stderr.decode("utf-8")
         result = {
             "stdout": stdout,
+            "stderr": stderr,
             "timeout": False,
         }
     except subprocess.TimeoutExpired:
         result = {
             "stdout": "",
+            "stderr": "",
             "timeout": True,
         }
+    
+    fitness = handler(result)
 
     note = json.dump(result)
     git.add_note(config, note)
-    return result
+    return fitness
 
 
 def git_crossover(config: GAEAConfig, seed: int, tag1: str, tag2: str):
@@ -153,11 +160,8 @@ def mutation_respond_extractor(response):
     return response.split("```")[1].strip() + "\n"
 
 
-def prepare_llm_backends(config: GAEAConfig):
-    return [
-        llm.HuggingfaceModel(name, device_map)
-        for name, device_map in zip(config.llm_names, config.device_maps)
-    ]
+def prepare_llm_backend(config: GAEAConfig):
+    llm.HuggingfaceModel(config.name, config.device_map)
 
 
 def llm_mutation(config, llm_backend, seeds, tags):

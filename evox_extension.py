@@ -107,16 +107,15 @@ class GitCrossover:
 class LLMMutation:
     def __init__(self, config):
         self.config = config
-        self.llm_backends = api.prepare_llm_backends(config)
+        self.llm_backend = api.prepare_llm_backend(config)
 
     def __call__(self, key, pop):
-        return llm_mutation(self.config, self.llm_backends[0], key, pop)
+        return llm_mutation(self.config, self.llm_backend, key, pop)
 
 
 def evaluate(config, pop):
     pop = [array_to_hex(individual) for individual in pop]
     fitness = [api.evaluate(config, tag, []) for tag in pop]
-    print(fitness)
     return -jnp.array(fitness)
 
 
