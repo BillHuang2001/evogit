@@ -1,14 +1,13 @@
+import json
 import warnings
-
-import jax
-from jax.experimental import io_callback
-import jax.numpy as jnp
-
-import jax
-import jax.numpy as jnp
-from gaea import api
 from functools import partial
+
+import jax
+import jax.numpy as jnp
 from evox import Monitor, Problem, jit_class
+from jax.experimental import io_callback
+
+from gaea import api
 
 
 def array_to_hex(array):
@@ -115,8 +114,16 @@ class LLMMutation:
 
 def evaluate(config, pop):
     pop = [array_to_hex(individual) for individual in pop]
-    fitness = [api.evaluate(config, tag, []) for tag in pop]
-    return -jnp.array(fitness)
+    output = [api.evaluate(config, tag, ["python", "config/evox_main.py"]) for tag in pop]
+    fitness = []
+    for o in output:
+        if o["timeout"] == True:
+            fit = 1e6
+        else:
+            stdout = json.loads(o["stdout"])
+            fit = stdout["best_fit"] if stdout["status"] == "finished" else 1e6
+        fitness.append(fit)
+    return jnp.array(fitness)
 
 
 @jit_class
