@@ -2,9 +2,9 @@
 # will be call using `python main.py <codedir>`
 
 import json
-import os
 import sys
 import time
+import traceback
 
 import jax
 import jax.numpy as jnp
@@ -71,11 +71,10 @@ if __name__ == "__main__":
             "time_cost": time,
         }
     except Exception as e:
-        import traceback
 
         result = {
             "status": "error",
-            "stack_trace": traceback.format_stack(),
+            "stack_trace": traceback.format_exc(),
             "best_fit": None,
             "time_cost": None,
         }

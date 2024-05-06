@@ -1,5 +1,6 @@
 import json
 import subprocess
+from pathlib import Path
 
 import numpy as np
 
@@ -32,7 +33,7 @@ def push_all_branches(config: GAEAConfig):
     pass
 
 
-def evaluate(config: GAEAConfig, tag: str, cmd: list[str], handler: callable, timeout=60, sandbox=True):
+def evaluate(config: GAEAConfig, tag: str, cmd: list[str], timeout=60, sandbox=False):
     """Evaluate the the result of the individual.
 
     Parameters
@@ -55,7 +56,7 @@ def evaluate(config: GAEAConfig, tag: str, cmd: list[str], handler: callable, ti
     """
     if sandbox:
         # run the command in a bubblewrap sandbox
-        cmd = ["bubblewrap_run.sh"] + cmd
+        cmd = [Path(__file__).parent / "bubblewrap_run.sh"] + cmd
 
     try:
         completed_proc = subprocess.run(
@@ -78,11 +79,8 @@ def evaluate(config: GAEAConfig, tag: str, cmd: list[str], handler: callable, ti
             "timeout": True,
         }
     
-    fitness = handler(result)
-
-    note = json.dump(result)
-    git.add_note(config, note)
-    return fitness
+    note = json.dumps(result)
+    return result
 
 
 def git_crossover(config: GAEAConfig, seed: int, tag1: str, tag2: str):
@@ -161,7 +159,7 @@ def mutation_respond_extractor(response):
 
 
 def prepare_llm_backend(config: GAEAConfig):
-    llm.HuggingfaceModel(config.name, config.device_map)
+    return llm.HuggingfaceModel(config.llm_name, config.device_map)
 
 
 def llm_mutation(config, llm_backend, seeds, tags):
@@ -171,7 +169,7 @@ def llm_mutation(config, llm_backend, seeds, tags):
     responds = [mutation_respond_extractor(response) for response in responds]
     offspring = []
     for tag, response in zip(tags, responds):
-        git.update_file(config, tag, response, f"{config.llm_names[0]}_mutation")
+        git.update_file(config, tag, response, f"{config.llm_name}_mutation")
         new_tag = git.alloc_new_tag_name()
         git.tag(config, new_tag)
         offspring.append(new_tag)

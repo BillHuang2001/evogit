@@ -1,6 +1,7 @@
 import json
 import warnings
 from functools import partial
+from pathlib import Path
 
 import jax
 import jax.numpy as jnp
@@ -114,14 +115,20 @@ class LLMMutation:
 
 def evaluate(config, pop):
     pop = [array_to_hex(individual) for individual in pop]
-    output = [api.evaluate(config, tag, ["python", "config/evox_main.py"]) for tag in pop]
+    output = [
+        api.evaluate(config, tag, ["python", str(Path(__file__).parent / "config/evox_main.py")])
+        for tag in pop
+    ]
     fitness = []
     for o in output:
         if o["timeout"] == True:
             fit = 1e6
         else:
             stdout = json.loads(o["stdout"])
-            fit = stdout["best_fit"] if stdout["status"] == "finished" else 1e6
+            if stdout["status"] == "finished":
+                fit = stdout["best_fit"]
+            else:
+                fit = 1e6
         fitness.append(fit)
     return jnp.array(fitness)
 
