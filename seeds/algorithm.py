@@ -1,15 +1,15 @@
 import jax.numpy as jnp
 from evox import Algorithm, State
-from evox.operators import crossover, mutation, selection
+from evox.operators.selection import topk_fit
 from jax import random
 
 
-class TSPBaselineGA(Algorithm):
-    def __init__(self, pop_size, num_cites, num_offspring):
+class TSPGA(Algorithm):
+    def __init__(self, pop_size, num_cities, num_offspring):
         super().__init__()
         self.pop_size = pop_size
-        self.num_cities = num_cites
-        self.num_offsprings = num_offspring
+        self.num_cities = num_cities
+        self.num_offspring = num_offspring
 
     def setup(self, key):
         key, subkey = random.split(key)
@@ -29,7 +29,9 @@ class TSPBaselineGA(Algorithm):
 
     def ask(self, state):
         key, sel_key, mut_key = random.split(state.key, 3)
-        selected = random.choice(sel_key, state.population.shape[0])
+        selected = random.choice(
+            sel_key, state.population.shape[0], (self.num_offspring,)
+        )
         offspring = random.permutation(
             mut_key, state.population[selected], axis=1, independent=True
         )
@@ -37,7 +39,7 @@ class TSPBaselineGA(Algorithm):
         return offspring, state
 
     def tell(self, state, fitness):
-        population = jnp.concatenate([state.population, state.offsprings], axis=0)
+        population = jnp.concatenate([state.population, state.offspring], axis=0)
         fitness = jnp.concatenate([state.fitness, fitness], axis=0)
-        population, fitness = selection.topk_fit(population, fitness, self.pop_size)
+        population, fitness = topk_fit(population, fitness, self.pop_size)
         return state.update(population=population, fitness=fitness)
