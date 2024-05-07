@@ -1,5 +1,6 @@
 import json
 import subprocess
+import logging
 from pathlib import Path
 
 import numpy as np
@@ -33,7 +34,7 @@ def push_all_branches(config: GAEAConfig):
     pass
 
 
-def evaluate(config: GAEAConfig, tag: str, cmd: list[str], timeout=60, sandbox=False):
+def evaluate(config: GAEAConfig, tag: str, cmd: list[str], timeout=300, sandbox=False):
     """Evaluate the the result of the individual.
 
     Parameters
@@ -54,6 +55,15 @@ def evaluate(config: GAEAConfig, tag: str, cmd: list[str], timeout=60, sandbox=F
             "timeout": bool
         }
     """
+    logger = logging.getLogger("main")
+    if not config.reevaluate:
+        # try to read the result from the git notes
+        # if the result is found, directly return the result without evaluating
+        note = git.read_note(config, tag)
+        logger.info(f"Read note of {tag}: {note}\n")
+        if note is not None:
+            return json.loads(note)
+
     if sandbox:
         # run the command in a bubblewrap sandbox
         cmd = [Path(__file__).parent / "bubblewrap_run.sh"] + cmd
@@ -78,8 +88,11 @@ def evaluate(config: GAEAConfig, tag: str, cmd: list[str], timeout=60, sandbox=F
             "stderr": "",
             "timeout": True,
         }
-    
+
     note = json.dumps(result)
+    git.add_note(config, note, overwrite=True)
+    logger.info(f"Evaluated {tag}\n")
+    logger.info(f"Result: {note}\n")
     return result
 
 
@@ -128,34 +141,35 @@ def git_rebase(config: GAEAConfig, rng: np.random.Generator, tag1: str, tag2: st
         git.continue_rebase(config)
 
 
-def mutation_prompt_constructor(code):
-    normal_mutation_template = """
-    Your task is to write a function that calculate pi.
-    Here is your original code:
-    ```
-    {}
-    ```
-    Please try to improve it.
-    The result should be given in between ``` and ```, do not explain.
-    """
+normal_mutation_template = """Your task is to write an algorithm that solves the Travelling Salesman Problem (TSP).
+The solution is encoded as a permutation of the indices of the cities.
+The code should be written in EvoX, which uses JAX and Python.
+In `setup` the algorithm can generate the initial population.
+In `ask` the algorithm can return the offspring and the update state.
+In `tell` the algorithm can update the state.
+The offspring return by the `ask` will be evaluated by another program, so you do not need to implement the evaluation.
+The state can be used to store mutable variables across `ask` and `tell`, for example, you can store the offspring in the state in `ask` and uses it latter on in `tell`.
+You can also add more functions or methods if needed.
+Here is your original code:
+```
+{}
+```
+Please try to improve it. You can modify either the `setup`, `ask`, or `tell` function or add new functions or methods.
+If there are bugs, please fix them as well.
+The result should be given in between ``` and ```, do not explain.
+"""
 
-    fix_mutation_template = """
-    Here is your original code:
-    ```
-    {}
-    ```
-    The code is incorrect.
-    And the error is:
-    ```
-    ```
-    Please try to fix it.
-    """
+
+def mutation_prompt_constructor(code):
 
     return normal_mutation_template.format(code)
 
 
 def mutation_respond_extractor(response):
-    return response.split("```")[1].strip() + "\n"
+    try:
+        return response.split("```")[1].strip() + "\n"
+    except IndexError:
+        return ""
 
 
 def prepare_llm_backend(config: GAEAConfig):

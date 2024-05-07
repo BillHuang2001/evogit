@@ -2,6 +2,7 @@ import json
 import warnings
 from functools import partial
 from pathlib import Path
+import logging
 
 import jax
 import jax.numpy as jnp
@@ -115,6 +116,8 @@ class LLMMutation:
 
 def evaluate(config, pop):
     pop = [array_to_hex(individual) for individual in pop]
+    logger = logging.getLogger("main")
+    logger.info(pop)
     output = [
         api.evaluate(config, tag, ["python", str(Path(__file__).parent / "config/evox_main.py")])
         for tag in pop

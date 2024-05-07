@@ -12,6 +12,7 @@ class GAEAConfig:
     merge_prob: float
     accept_ours_prob: float
     sign_tag: bool
+    reevaluate: bool
     remote_repo: Optional[str]
     hostname: Optional[str]
 

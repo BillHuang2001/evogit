@@ -6,6 +6,7 @@ import subprocess
 import os
 import uuid
 from gaea.config import GAEAConfig
+from typing import Optional
 import re
 
 
@@ -49,21 +50,46 @@ def delete_tag(config: GAEAConfig, tag: str):
     subprocess.run(["git", "tag", "-d", tag], cwd=config.git_dir, check=True)
 
 
-def add_note(config: GAEAConfig, note: str):
-    subprocess.run(["git", "notes", "add", "-m", note], cwd=config.git_dir, check=True)
+def add_note(config: GAEAConfig, note: str, overwrite: bool = False):
+    """Add a note to the current commit. If overwrite is True, force overwrite the existing note."""
+
+    cmd = ["git", "notes", "add", "-m", note]
+    if overwrite:
+        cmd.append("-f")
+
+    subprocess.run(cmd, cwd=config.git_dir, check=True)
+
+
+def read_note(config: GAEAConfig, tag: Optional[str]):
+    """Read the note of the specified tag. If tag is None, read the note of the current commit.
+    Return None if the note does not exist.
+    """
+
+    cmd = ["git", "notes", "show"]
+    if tag is not None:
+        cmd.append(tag)
+
+    completed_proc = subprocess.run(
+        cmd,
+        cwd=config.git_dir,
+        capture_output=True,
+    )
+
+    if completed_proc.returncode != 0:
+        return None
+    else:
+        return completed_proc.stdout.decode("utf-8")
 
 
 def update_file(config: GAEAConfig, tag: str, new_content: str, commit_message: str):
     """Update the content of the file in the specified tag and commit it."""
     subprocess.run(["git", "checkout", tag], cwd=config.git_dir, check=True)
     with open(os.path.join(config.git_dir, config.filename), "w") as f:
-        print(new_content)
         f.write(new_content)
     subprocess.run(["git", "add", config.filename], cwd=config.git_dir, check=True)
     subprocess.run(
         ["git", "commit", "-m", commit_message], cwd=config.git_dir, check=True
     )
-    print(subprocess.run(["git", "log"], cwd=config.git_dir, check=True, capture_output=True).stdout.decode("utf-8"))
 
 
 def read_file(config: GAEAConfig, tag: str):
