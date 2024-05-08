@@ -173,7 +173,12 @@ def mutation_respond_extractor(response):
 
 
 def prepare_llm_backend(config: GAEAConfig):
-    return llm.HuggingfaceModel(config.llm_name, config.device_map)
+    if "/" in config.llm_name:
+        # e.g. meta-llama/Meta-Llama-3-8B-Instruct
+        # which refers to a huggingface model
+        return llm.HuggingfaceModel(config.llm_name, config.device_map)
+    elif config.llm_name.lower() == "gemini":
+        return llm.GeminiBackend(config.api_key, config.http_req_params)
 
 
 def llm_mutation(config, llm_backend, seeds, tags):

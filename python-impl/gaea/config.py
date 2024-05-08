@@ -13,6 +13,8 @@ class GAEAConfig:
     accept_ours_prob: float
     sign_tag: bool
     reevaluate: bool
+    api_key: Optional[str]
+    http_req_params: dict
     remote_repo: Optional[str]
     hostname: Optional[str]
 
