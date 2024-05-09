@@ -204,3 +204,10 @@ def branches_track_tags(config: GAEAConfig, branch_names: list[str], tags: list[
         subprocess.run(
             ["git", "branch", "-f", branch_name, tag], cwd=config.git_dir, check=True
         )
+
+
+def push_branch_to_remote(config: GAEAConfig, branch_name: str, remote: str):
+    """Push the branch to the remote repository along side with the notes."""
+    checkout(config, branch_name)
+    subprocess.run(["git", "push", "-f", remote, branch_name], cwd=config.git_dir, check=True)
+    subprocess.run(["git", "push", remote, f"{branch_name}:refs/notes/commits"], cwd=config.git_dir, check=True)
