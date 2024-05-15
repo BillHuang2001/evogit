@@ -10,13 +10,17 @@ from typing import Optional
 import re
 
 
+# used to match the conflict pattern in the file
+# example:
+# <<<<<<< HEAD
+# content in HEAD
+# =======
+# content in branch_name
+# >>>>>>> branch_name
+# the first group matches the content in HEAD, and the second group matches the content in branch_name
 git_conflict_pattern = re.compile(
     r"<<<<<<<.*?\n(.*?)=======.*?\n(.*?)>>>>>>>.*?\n", re.DOTALL
 )
-
-
-def alloc_new_tag_name():
-    return uuid.uuid1().hex
 
 
 def init_git_repo(config: GAEAConfig):
@@ -39,15 +43,18 @@ def init_git_repo(config: GAEAConfig):
     subprocess.run(["git", "commit", "-m", "init"], cwd=git_dir, check=True)
 
 
-def tag(config: GAEAConfig, tag):
-    if config.sign_tag:
-        subprocess.run(["git", "tag", "-s", tag], cwd=config.git_dir, check=True)
-    else:
-        subprocess.run(["git", "tag", tag], cwd=config.git_dir, check=True)
-
-
-def delete_tag(config: GAEAConfig, tag: str):
-    subprocess.run(["git", "tag", "-d", tag], cwd=config.git_dir, check=True)
+def read_head_commit(config: GAEAConfig):
+    """Read the commit id of the current HEAD."""
+    return (
+        subprocess.run(
+            ["git", "rev-parse", "HEAD"],
+            cwd=config.git_dir,
+            check=True,
+            capture_output=True,
+        )
+        .stdout.decode("utf-8")
+        .strip()
+    )
 
 
 def add_note(config: GAEAConfig, note: str, overwrite: bool = False):
@@ -60,14 +67,14 @@ def add_note(config: GAEAConfig, note: str, overwrite: bool = False):
     subprocess.run(cmd, cwd=config.git_dir, check=True)
 
 
-def read_note(config: GAEAConfig, tag: Optional[str]):
-    """Read the note of the specified tag. If tag is None, read the note of the current commit.
+def read_note(config: GAEAConfig, commit: Optional[str]):
+    """Read the note of the specified commit. If commit is None, read the note of the current HEAD.
     Return None if the note does not exist.
     """
 
     cmd = ["git", "notes", "show"]
-    if tag is not None:
-        cmd.append(tag)
+    if commit is not None:
+        cmd.append(commit)
 
     completed_proc = subprocess.run(
         cmd,
@@ -81,9 +88,9 @@ def read_note(config: GAEAConfig, tag: Optional[str]):
         return completed_proc.stdout.decode("utf-8")
 
 
-def update_file(config: GAEAConfig, tag: str, new_content: str, commit_message: str):
-    """Update the content of the file in the specified tag and commit it."""
-    subprocess.run(["git", "checkout", tag], cwd=config.git_dir, check=True)
+def update_file(config: GAEAConfig, commit: str, new_content: str, commit_message: str):
+    """Update the content of the file in the specified commit_id and commit the updated file."""
+    subprocess.run(["git", "checkout", commit], cwd=config.git_dir, check=True)
     with open(os.path.join(config.git_dir, config.filename), "w") as f:
         f.write(new_content)
     subprocess.run(["git", "add", config.filename], cwd=config.git_dir, check=True)
@@ -92,18 +99,18 @@ def update_file(config: GAEAConfig, tag: str, new_content: str, commit_message: 
     )
 
 
-def read_file(config: GAEAConfig, tag: str):
-    """Read the content of the file in the specified tag."""
+def read_file(config: GAEAConfig, commit: str):
+    """Read the content of the file in the specified commit."""
     return subprocess.run(
-        ["git", "show", f"{tag}:{config.filename}"],
+        ["git", "show", f"{commit}:{config.filename}"],
         cwd=config.git_dir,
         check=True,
         capture_output=True,
     ).stdout.decode("utf-8")
 
 
-def batch_read_files(config: GAEAConfig, tags: list[str]):
-    return [read_file(config, tag) for tag in tags]
+def batch_read_files(config: GAEAConfig, commits: list[str]):
+    return [read_file(config, commit) for commit in commits]
 
 
 def has_conflict(config: GAEAConfig):
@@ -126,20 +133,24 @@ def count_conflicts(config: GAEAConfig):
     return len(git_conflict_pattern.findall(content))
 
 
-def checkout(config: GAEAConfig, tag):
-    """Checkout the specified tag."""
-    subprocess.run(["git", "checkout", "--detach", tag], cwd=config.git_dir, check=True)
-
-
-def merge_branches(config: GAEAConfig, tag):
-    """merge the commit specified by the tag to the current branch."""
-    subprocess.run(["git", "merge", tag, "--no-edit"], cwd=config.git_dir, check=True)
-
-
-def rebase_branches(config: GAEAConfig, tag):
-    """merge the commit specified by the tag to the current branch."""
+def checkout(config: GAEAConfig, commit: str):
+    """Checkout the specified commit."""
     subprocess.run(
-        ["git", "rebase", tag],
+        ["git", "checkout", "--detach", commit], cwd=config.git_dir, check=True
+    )
+
+
+def merge_branches(config: GAEAConfig, commit: str):
+    """merge the commit specified by the commit_id to the current branch."""
+    subprocess.run(
+        ["git", "merge", commit, "--no-edit"], cwd=config.git_dir, check=True
+    )
+
+
+def rebase_branches(config: GAEAConfig, commit: str):
+    """rebase the current branch on the commit specified by the commit_id."""
+    subprocess.run(
+        ["git", "rebase", commit],
         cwd=config.git_dir,
         env={"GIT_EDITOR": "true"},
         check=True,
@@ -180,34 +191,24 @@ def handle_conflict(config: GAEAConfig, strategy: list[bool]):
     subprocess.run(["git", "add", config.filename], cwd=config.git_dir, check=True)
 
 
-def update_tags(config: GAEAConfig, tags: list[str]):
-    """Keep only the specified tags and delete the rest."""
-    existing_tags = (
+def branches_track_commits(
+    config: GAEAConfig, branch_names: list[str], commits: list[str]
+):
+    """Create branches that track the specified commits."""
+    for branch_name, commit in zip(branch_names, commits):
         subprocess.run(
-            ["git", "tag"], cwd=config.git_dir, capture_output=True, check=True
-        )
-        .stdout.decode("utf-8")
-        .strip()
-        .split("\n")
-    )
-    existing_tags = [tag.strip() for tag in existing_tags if tag.strip() != ""]
-    to_be_deleted = list(set(existing_tags) - set(tags))
-    if len(to_be_deleted) > 0:
-        subprocess.run(
-            ["git", "tag", "-d", *to_be_deleted], cwd=config.git_dir, check=True
-        )
-
-
-def branches_track_tags(config: GAEAConfig, branch_names: list[str], tags: list[str]):
-    """Create branches that track the specified tags."""
-    for branch_name, tag in zip(branch_names, tags):
-        subprocess.run(
-            ["git", "branch", "-f", branch_name, tag], cwd=config.git_dir, check=True
+            ["git", "branch", "-f", branch_name, commit], cwd=config.git_dir, check=True
         )
 
 
 def push_branch_to_remote(config: GAEAConfig, branch_name: str, remote: str):
     """Push the branch to the remote repository along side with the notes."""
     checkout(config, branch_name)
-    subprocess.run(["git", "push", "-f", remote, branch_name], cwd=config.git_dir, check=True)
-    subprocess.run(["git", "push", remote, f"{branch_name}:refs/notes/commits"], cwd=config.git_dir, check=True)
+    subprocess.run(
+        ["git", "push", "-f", remote, branch_name], cwd=config.git_dir, check=True
+    )
+    subprocess.run(
+        ["git", "push", remote, f"{branch_name}:refs/notes/commits"],
+        cwd=config.git_dir,
+        check=True,
+    )

@@ -12,12 +12,23 @@ from jax.experimental import io_callback
 from gaea import api
 
 
+# commit_id is either sha1 - 160 bits or sha256 - 256 bits
+# we use 20 bytes to represent the commit id using sha1
+# and 32 bytes to represent the commit id using sha256
+
+
 def array_to_hex(array):
     return array.tobytes().hex()
 
 
 def hex_to_array(hex_string):
     return jnp.frombuffer(bytes.fromhex(hex_string), dtype=jnp.uint8)
+
+
+HASH_BYTE_LENGTH = {
+    "sha1": 20,
+    "sha256": 32,
+}
 
 
 class BranchMonitor(Monitor):
@@ -50,14 +61,12 @@ class BranchMonitor(Monitor):
 
 
 def gaea_git_crossover(config, seeds, parents):
-    tag1, tag2 = parents
     offspring = []
-    for seed, tag1, tag2 in zip(seeds, parents[0], parents[1]):
-        tag1 = array_to_hex(tag1)
-        tag2 = array_to_hex(tag2)
-        new_tag = api.git_crossover(config, seed, tag1, tag2)
-        print(new_tag)
-        offspring.append(hex_to_array(new_tag))
+    for seed, commit1, commit2 in zip(seeds, parents[0], parents[1]):
+        commit1 = array_to_hex(commit1)
+        commit2 = array_to_hex(commit2)
+        new_commit = api.git_crossover(config, seed, commit1, commit2)
+        offspring.append(hex_to_array(new_commit))
 
     return jnp.stack(offspring)
 
@@ -72,14 +81,15 @@ def git_crossover(config, type, key, parents):
         parents = jnp.concatenate([parents, parents[::-1]], axis=1)
     seeds = jax.random.randint(key, (num_pairs,), 0, jnp.iinfo(jnp.int32).max)
 
-    return_type = jax.ShapeDtypeStruct((num_pairs, 16), jnp.uint8)
+    byte_length = HASH_BYTE_LENGTH[config.git_hash]
+    return_type = jax.ShapeDtypeStruct((num_pairs, byte_length), jnp.uint8)
     return io_callback(partial(gaea_git_crossover, config), return_type, seeds, parents)
 
 
 def gaea_llm_mutation(config, llm_backend, seeds, pop):
-    tags = [array_to_hex(tag) for tag in pop]
-    new_tags = api.llm_mutation(config, llm_backend, seeds, tags)
-    offspring = [hex_to_array(new_tag) for new_tag in new_tags]
+    commits = [array_to_hex(commit) for commit in pop]
+    new_commits = api.llm_mutation(config, llm_backend, seeds, commits)
+    offspring = [hex_to_array(new_commit) for new_commit in new_commits]
 
     return jnp.stack(offspring)
 
@@ -88,7 +98,9 @@ def gaea_llm_mutation(config, llm_backend, seeds, pop):
 def llm_mutation(config, llm_backend, key, pop):
     pop_size = pop.shape[0]
     seeds = jax.random.randint(key, (pop_size,), 0, jnp.iinfo(jnp.int32).max)
-    return_type = jax.ShapeDtypeStruct((pop_size, 16), jnp.uint8)
+
+    byte_length = HASH_BYTE_LENGTH[config.git_hash]
+    return_type = jax.ShapeDtypeStruct((pop_size, byte_length), jnp.uint8)
     return io_callback(
         partial(gaea_llm_mutation, config, llm_backend), return_type, seeds, pop
     )
@@ -119,8 +131,12 @@ def evaluate(config, pop):
     logger = logging.getLogger("main")
     logger.info(pop)
     output = [
-        api.evaluate(config, tag, ["python", str(Path(__file__).parent / "config/evox_main.py")])
-        for tag in pop
+        api.evaluate(
+            config,
+            commit,
+            ["python", str(Path(__file__).parent / "config/evox_main.py")],
+        )
+        for commit in pop
     ]
     fitness = []
     for o in output:
@@ -151,5 +167,5 @@ class CodegenProblem(Problem):
 
 def init_population(config, pop_size):
     pop = api.get_initial_branches(config, pop_size)
-    pop = [hex_to_array(tag) for tag in pop]
+    pop = [hex_to_array(commit) for commit in pop]
     return jnp.stack(pop)

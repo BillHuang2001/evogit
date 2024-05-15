@@ -11,7 +11,7 @@ class GAEAConfig:
     filename: str
     merge_prob: float
     accept_ours_prob: float
-    sign_tag: bool
+    git_hash: str # sha1 or sha256
     reevaluate: bool
     api_key: Optional[str]
     http_req_params: dict

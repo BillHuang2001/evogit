@@ -11,22 +11,20 @@ from .utils import git, llm
 
 def update_branches(config: GAEAConfig, pop: list[str]):
     """The branches are used to track the current state of the population"""
-    git.update_tags(config, pop)
     branch_names = []
     hostname = config.hostname if config.hostname is not None else "host0"
 
-    for index, tag in enumerate(pop):
+    for index, _commit in enumerate(pop):
         branch_names.append(f"{hostname}-individual-{index}")
 
-    git.branches_track_tags(config, branch_names, pop)
+    git.branches_track_commits(config, branch_names, pop)
 
 
 def get_initial_branches(config: GAEAConfig, pop_size: int):
     """Get the initial branches"""
-    tag = git.alloc_new_tag_name()
-    git.tag(config, tag)
 
-    return [tag for _ in range(pop_size)]
+    head = git.read_head_commit(config)
+    return [head for _ in range(pop_size)]
 
 
 def push_all_branches(config: GAEAConfig):
@@ -34,7 +32,9 @@ def push_all_branches(config: GAEAConfig):
     pass
 
 
-def evaluate(config: GAEAConfig, tag: str, cmd: list[str], timeout=300, sandbox=False):
+def evaluate(
+    config: GAEAConfig, commit: str, cmd: list[str], timeout=300, sandbox=False
+):
     """Evaluate the the result of the individual.
 
     Parameters
@@ -59,8 +59,8 @@ def evaluate(config: GAEAConfig, tag: str, cmd: list[str], timeout=300, sandbox=
     if not config.reevaluate:
         # try to read the result from the git notes
         # if the result is found, directly return the result without evaluating
-        note = git.read_note(config, tag)
-        logger.info(f"Read note of {tag}: {note}\n")
+        note = git.read_note(config, commit)
+        logger.info(f"Read note of {commit}: {note}\n")
         if note is not None:
             return json.loads(note)
 
@@ -91,29 +91,26 @@ def evaluate(config: GAEAConfig, tag: str, cmd: list[str], timeout=300, sandbox=
 
     note = json.dumps(result)
     git.add_note(config, note, overwrite=True)
-    logger.info(f"Evaluated {tag}\n")
+    logger.info(f"Evaluated {commit}\n")
     logger.info(f"Result: {note}\n")
     return result
 
 
-def git_crossover(config: GAEAConfig, seed: int, tag1: str, tag2: str):
-    """crossover between tag1 and tag2"""
+def git_crossover(config: GAEAConfig, seed: int, commit1: str, commit2: str):
+    """crossover between commit1 and commit2"""
     rng = np.random.default_rng(seed)
     use_merge = rng.choice([True, False], p=[config.merge_prob, 1 - config.merge_prob])
     if use_merge:
-        git_merge(config, rng, tag1, tag2)
+        git_merge(config, rng, commit1, commit2)
     else:
-        git_rebase(config, rng, tag1, tag2)
+        git_rebase(config, rng, commit1, commit2)
 
-    new_tag = git.alloc_new_tag_name()
-    git.tag(config, new_tag)
-
-    return new_tag
+    return git.read_head_commit(config)
 
 
-def git_merge(config: GAEAConfig, rng: np.random.Generator, tag1: str, tag2: str):
-    git.checkout(config, tag1)
-    git.merge_branches(config, tag2)
+def git_merge(config: GAEAConfig, rng: np.random.Generator, commit1: str, commit2: str):
+    git.checkout(config, commit1)
+    git.merge_branches(config, commit2)
 
     if git.has_conflict(config):
         count = git.count_conflicts(config)
@@ -126,9 +123,11 @@ def git_merge(config: GAEAConfig, rng: np.random.Generator, tag1: str, tag2: str
         git.continue_merge(config)
 
 
-def git_rebase(config: GAEAConfig, rng: np.random.Generator, tag1: str, tag2: str):
-    git.checkout(config, tag1)
-    git.rebase_branches(config, tag2)
+def git_rebase(
+    config: GAEAConfig, rng: np.random.Generator, commit1: str, commit2: str
+):
+    git.checkout(config, commit1)
+    git.rebase_branches(config, commit2)
 
     while git.has_conflict(config):
         count = git.count_conflicts(config)
@@ -181,16 +180,14 @@ def prepare_llm_backend(config: GAEAConfig):
         return llm.GeminiBackend(config.api_key, config.http_req_params)
 
 
-def llm_mutation(config, llm_backend, seeds, tags):
-    codes = [git.read_file(config, tag) for tag in tags]
+def llm_mutation(config, llm_backend, seeds, commits):
+    codes = [git.read_file(config, commit) for commit in commits]
     prompts = [mutation_prompt_constructor(code) for code in codes]
     responds = llm_backend.query(seeds, prompts)
     responds = [mutation_respond_extractor(response) for response in responds]
     offspring = []
-    for tag, response in zip(tags, responds):
-        git.update_file(config, tag, response, f"{config.llm_name}_mutation")
-        new_tag = git.alloc_new_tag_name()
-        git.tag(config, new_tag)
-        offspring.append(new_tag)
+    for commit, response in zip(commits, responds):
+        git.update_file(config, commit, response, f"{config.llm_name}_mutation")
+        offspring.append(git.read_head_commit(config))
 
     return offspring
