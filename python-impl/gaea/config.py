@@ -9,6 +9,7 @@ class GAEAConfig:
     llm_name: str
     device_map: str
     git_dir: str
+    eval_command: list[str]
     seed_file: str
     filename: str
     merge_prob: float
