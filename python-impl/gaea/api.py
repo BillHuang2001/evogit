@@ -1,6 +1,7 @@
 import json
 import subprocess
 import logging
+import re
 from pathlib import Path
 
 import numpy as np
@@ -56,6 +57,7 @@ def evaluate(
         }
     """
     logger = logging.getLogger("main")
+    git.checkout(config, commit)
     if not config.reevaluate:
         # try to read the result from the git notes
         # if the result is found, directly return the result without evaluating
@@ -122,6 +124,8 @@ def git_merge(config: GAEAConfig, rng: np.random.Generator, commit1: str, commit
         git.handle_conflict(config, strategy)
         git.continue_merge(config)
 
+    assert not git.has_conflict(config)
+
 
 def git_rebase(
     config: GAEAConfig, rng: np.random.Generator, commit1: str, commit2: str
@@ -138,6 +142,8 @@ def git_rebase(
         )
         git.handle_conflict(config, strategy)
         git.continue_rebase(config)
+
+    assert not git.has_conflict(config)
 
 
 normal_mutation_template = """Your task is to write an algorithm that solves the Travelling Salesman Problem (TSP).
@@ -158,16 +164,37 @@ If there are bugs, please fix them as well.
 The result should be given in between ``` and ```, do not explain.
 """
 
+bin_packing_template = """Your task is to write an algorithm that solves the Bin Packing Problem.
+The solution is encoded as a list of items, where each item is a float in the range [0, 1].
+The code should be written in Python.
+The function should return a list of integers, where each integer is the bin id that the item is assigned to.
+The bins have a capacity of 1.0, and the sum of the items in each bin should be less than or equal to 1.0.
+Here is your original code:
+```
+{}
+```
+Please try to improve it. You can modify the function or add new functions.
+If there are bugs, please fix them as well.
+The result should be given in between ``` and ```, do not explain.
+"""
+
 
 def mutation_prompt_constructor(code):
 
-    return normal_mutation_template.format(code)
+    return bin_packing_template.format(code)
+
+
+code_extract_pattern = re.compile(r"```.*?\n(.*?)```", re.DOTALL)
 
 
 def mutation_respond_extractor(response):
     try:
-        return response.split("```")[1].strip() + "\n"
-    except IndexError:
+        match = code_extract_pattern.search(response)
+        if match:
+            return match.group(1).strip() + "\n"
+        else:
+            return ""
+    except Exception:
         return ""
 
 

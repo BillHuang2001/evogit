@@ -4,6 +4,7 @@ The utility functions for git operations.
 
 import subprocess
 import os
+import shutil
 import uuid
 from gaea.config import GAEAConfig
 from typing import Optional
@@ -29,18 +30,32 @@ def init_git_repo(config: GAEAConfig):
         print(f"{git_dir} already exists! Do you want to remove it? (y/n)")
         if input() == "y":
             print(f"Removing {git_dir}...")
-            os.system(f"rm -rf {git_dir}")
+            for filename in os.listdir(git_dir):
+                file_path = os.path.join(git_dir, filename)
+                if os.path.isfile(file_path):
+                    os.remove(file_path)
+                elif os.path.isdir(file_path):
+                    shutil.rmtree(file_path)
+                else:
+                    raise ValueError(f"Unknown file type: {file_path}")
         else:
             print("Abort!")
             exit()
+    else:
+        os.mkdir(git_dir, mode=0o755)
 
-    os.system(f"mkdir -p {git_dir}")
-    subprocess.run(["git", "init"], cwd=git_dir, check=True)
     subprocess.run(
-        ["cp", config.seed_file, os.path.join(git_dir, config.filename)], check=True
+        ["git", "init", "--object-format", config.git_hash], cwd=git_dir, check=True
     )
+    subprocess.run(
+        ["git", "config", "user.name", config.git_user_name], cwd=git_dir, check=True
+    )
+    subprocess.run(
+        ["git", "config", "user.email", config.git_user_email], cwd=git_dir, check=True
+    )
+    shutil.copy(config.seed_file, os.path.join(git_dir, config.filename))
     subprocess.run(["git", "add", "."], cwd=git_dir, check=True)
-    subprocess.run(["git", "commit", "-m", "init"], cwd=git_dir, check=True)
+    subprocess.run(["git", "commit", "-q", "-m", "init"], cwd=git_dir, check=True)
 
 
 def read_head_commit(config: GAEAConfig):
@@ -90,12 +105,20 @@ def read_note(config: GAEAConfig, commit: Optional[str]):
 
 def update_file(config: GAEAConfig, commit: str, new_content: str, commit_message: str):
     """Update the content of the file in the specified commit_id and commit the updated file."""
-    subprocess.run(["git", "checkout", commit], cwd=config.git_dir, check=True)
-    with open(os.path.join(config.git_dir, config.filename), "w") as f:
+    checkout(config, commit)
+    with open(os.path.join(config.git_dir, config.filename), "r+") as f:
+        current_content = f.read()
+        # if the content is the same, do nothing
+        if current_content == new_content:
+            return
+
+        f.seek(0)
         f.write(new_content)
+        f.truncate()
+
     subprocess.run(["git", "add", config.filename], cwd=config.git_dir, check=True)
     subprocess.run(
-        ["git", "commit", "-m", commit_message], cwd=config.git_dir, check=True
+        ["git", "commit", "-q", "-m", commit_message], cwd=config.git_dir, check=True
     )
 
 
@@ -119,7 +142,7 @@ def has_conflict(config: GAEAConfig):
         ["git", "status"], cwd=config.git_dir, capture_output=True, check=True
     ).stdout.decode("utf-8")
 
-    if "Unmerged paths" in status:
+    if "Unmerged paths" in status or "rebasing" in status or "merging" in status:
         return True
     else:
         return False
@@ -135,36 +158,47 @@ def count_conflicts(config: GAEAConfig):
 
 def checkout(config: GAEAConfig, commit: str):
     """Checkout the specified commit."""
+    # -q is quiet, --detach is used to checkout the commit in detached HEAD mode
     subprocess.run(
-        ["git", "checkout", "--detach", commit], cwd=config.git_dir, check=True
+        ["git", "checkout", "-q", "--detach", commit], cwd=config.git_dir, check=True
     )
 
 
 def merge_branches(config: GAEAConfig, commit: str):
     """merge the commit specified by the commit_id to the current branch."""
-    subprocess.run(
-        ["git", "merge", commit, "--no-edit"], cwd=config.git_dir, check=True
-    )
+    # don't check the return code because the merge may fail
+    subprocess.run(["git", "merge", "-q", commit, "--no-edit"], cwd=config.git_dir)
 
 
 def rebase_branches(config: GAEAConfig, commit: str):
     """rebase the current branch on the commit specified by the commit_id."""
+    # don't check the return code because the rebase may fail
+    # GIT_EDITOR=true is used to disable the interactive editor
+    # and accept the default commit message
     subprocess.run(
-        ["git", "rebase", commit],
+        ["git", "rebase", "-q", commit],
+        cwd=config.git_dir,
+        env={"GIT_EDITOR": "true"},
+    )
+
+
+def continue_merge(config: GAEAConfig):
+    """Continue the merge process."""
+    subprocess.run(
+        ["git", "merge", "--continue"],
         cwd=config.git_dir,
         env={"GIT_EDITOR": "true"},
         check=True,
     )
 
 
-def continue_merge(config: GAEAConfig):
-    """Continue the merge process."""
-    subprocess.run(["git", "merge", "--continue"], cwd=config.git_dir, check=True)
-
-
 def continue_rebase(config: GAEAConfig):
     """Continue the rebase process."""
-    subprocess.run(["git", "rebase", "--continue"], cwd=config.git_dir, check=True)
+    # GIT_EDITOR=true is used to disable the interactive editor
+    # and accept the default commit message
+    subprocess.run(
+        ["git", "rebase", "--continue"], cwd=config.git_dir, env={"GIT_EDITOR": "true"}
+    )
 
 
 def handle_conflict(config: GAEAConfig, strategy: list[bool]):
