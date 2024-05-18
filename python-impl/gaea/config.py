@@ -4,6 +4,8 @@ from typing import Optional
 
 @dataclass(frozen=True)
 class GAEAConfig:
+    git_user_name: str
+    git_user_email: str
     llm_name: str
     device_map: str
     git_dir: str
