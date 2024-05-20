@@ -134,20 +134,27 @@ def evaluate(config, pop):
         api.evaluate(
             config,
             commit,
-            ["python", str(Path(__file__).parent / "config/evox_main.py")],
+            config.eval_command,
         )
         for commit in pop
     ]
+    if config.num_objectives == 1:
+        illegal_value = jnp.inf
+    else:
+        illegal_value = [jnp.inf for _ in range(config.num_objectives)]
     fitness = []
     for o in output:
         if o["timeout"] == True:
-            fit = 1e6
+            fit = illegal_value
         else:
-            stdout = json.loads(o["stdout"])
-            if stdout["status"] == "finished":
-                fit = stdout["best_fit"]
-            else:
-                fit = 1e6
+            try:
+                stdout = json.loads(o["stdout"])
+                if stdout["status"] == "finished":
+                    fit = stdout["fitness"]
+                else:
+                    fit = illegal_value
+            except json.decoder.JSONDecodeError:
+                fit = illegal_value
         fitness.append(fit)
     return jnp.array(fitness)
 
@@ -158,7 +165,13 @@ class CodegenProblem(Problem):
         self.config = config
 
     def evaluate(self, state, population):
-        return_dtype = jax.ShapeDtypeStruct((population.shape[0],), jnp.float32)
+        if self.config.num_objectives == 1:
+            return_dtype = jax.ShapeDtypeStruct((population.shape[0],), jnp.float32)
+        else:
+            return_dtype = jax.ShapeDtypeStruct(
+                (population.shape[0], self.config.num_objectives), jnp.float32
+            )
+
         return (
             io_callback(partial(evaluate, self.config), return_dtype, population),
             state,

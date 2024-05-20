@@ -4,6 +4,7 @@ from typing import Optional
 
 @dataclass(frozen=True)
 class GAEAConfig:
+    num_objectives: int
     git_user_name: str
     git_user_email: str
     llm_name: str
@@ -16,6 +17,10 @@ class GAEAConfig:
     accept_ours_prob: float
     git_hash: str # sha1 or sha256
     reevaluate: bool
+    enable_sandbox: bool
+    timeout: int
+    prompt_constructor: callable
+    respond_extractor: callable
     api_key: Optional[str]
     http_req_params: dict
     remote_repo: Optional[str]

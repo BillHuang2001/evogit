@@ -33,9 +33,7 @@ def push_all_branches(config: GAEAConfig):
     pass
 
 
-def evaluate(
-    config: GAEAConfig, commit: str, cmd: list[str], timeout=300, sandbox=False
-):
+def evaluate(config: GAEAConfig, commit: str, cmd: list[str]):
     """Evaluate the the result of the individual.
 
     Parameters
@@ -66,7 +64,7 @@ def evaluate(
         if note is not None:
             return json.loads(note)
 
-    if sandbox:
+    if config.enable_sandbox:
         # run the command in a bubblewrap sandbox
         cmd = [Path(__file__).parent / "bubblewrap_run.sh"] + cmd
 
@@ -75,7 +73,7 @@ def evaluate(
             cmd,
             capture_output=True,
             cwd=config.git_dir,
-            timeout=timeout,
+            timeout=config.timeout,
         )
         stdout = completed_proc.stdout.decode("utf-8")
         stderr = completed_proc.stderr.decode("utf-8")
@@ -146,58 +144,6 @@ def git_rebase(
     assert not git.has_conflict(config)
 
 
-normal_mutation_template = """Your task is to write an algorithm that solves the Travelling Salesman Problem (TSP).
-The solution is encoded as a permutation of the indices of the cities.
-The code should be written in EvoX, which uses JAX and Python.
-In `setup` the algorithm can generate the initial population.
-In `ask` the algorithm can return the offspring and the update state.
-In `tell` the algorithm can update the state.
-The offspring return by the `ask` will be evaluated by another program, so you do not need to implement the evaluation.
-The state can be used to store mutable variables across `ask` and `tell`, for example, you can store the offspring in the state in `ask` and uses it latter on in `tell`.
-You can also add more functions or methods if needed.
-Here is your original code:
-```
-{}
-```
-Please try to improve it. You can modify either the `setup`, `ask`, or `tell` function or add new functions or methods.
-If there are bugs, please fix them as well.
-The result should be given in between ``` and ```, do not explain.
-"""
-
-bin_packing_template = """Your task is to write an algorithm that solves the Bin Packing Problem.
-The solution is encoded as a list of items, where each item is a float in the range [0, 1].
-The code should be written in Python.
-The function should return a list of integers, where each integer is the bin id that the item is assigned to.
-The bins have a capacity of 1.0, and the sum of the items in each bin should be less than or equal to 1.0.
-Here is your original code:
-```
-{}
-```
-Please try to improve it. You can modify the function or add new functions.
-If there are bugs, please fix them as well.
-The result should be given in between ``` and ```, do not explain.
-"""
-
-
-def mutation_prompt_constructor(code):
-
-    return bin_packing_template.format(code)
-
-
-code_extract_pattern = re.compile(r"```.*?\n(.*?)```", re.DOTALL)
-
-
-def mutation_respond_extractor(response):
-    try:
-        match = code_extract_pattern.search(response)
-        if match:
-            return match.group(1).strip() + "\n"
-        else:
-            return ""
-    except Exception:
-        return ""
-
-
 def prepare_llm_backend(config: GAEAConfig):
     if "/" in config.llm_name:
         # e.g. meta-llama/Meta-Llama-3-8B-Instruct
@@ -208,10 +154,23 @@ def prepare_llm_backend(config: GAEAConfig):
 
 
 def llm_mutation(config, llm_backend, seeds, commits):
-    codes = [git.read_file(config, commit) for commit in commits]
-    prompts = [mutation_prompt_constructor(code) for code in codes]
+    prompts = []
+    for commit in commits:
+        code = git.read_file(config, commit)
+        note = git.read_note(config, commit)
+        if note is not None:
+            note = json.loads(note)
+            if note["timeout"]:
+                timeout = True
+                stack_trace = None
+            else:
+                timeout = False
+                stack_trace = json.loads(note["stdout"])["stack_trace"]
+
+        prompts.append(config.prompt_constructor(code, stack_trace, timeout))
+
     responds = llm_backend.query(seeds, prompts)
-    responds = [mutation_respond_extractor(response) for response in responds]
+    responds = [config.respond_extractor(response) for response in responds]
     offspring = []
     for commit, response in zip(commits, responds):
         git.update_file(config, commit, response, f"{config.llm_name}_mutation")
