@@ -5,7 +5,7 @@ import traceback
 import random
 
 
-NUM_TEST_CASES = 10
+NUM_TEST_CASES = 100
 NUM_MAX_BINS = 1000
 
 def valid_plan(data, plan):
@@ -28,6 +28,7 @@ if __name__ == "__main__":
         sys.path.append("./")
         from algorithm import bin_packing
 
+        # set the random seed
         random.seed(42)
         fitness = []
         for _ in range(NUM_TEST_CASES):
@@ -43,7 +44,7 @@ if __name__ == "__main__":
         result = {
             "status": "finished",
             "stack_trace": "",
-            "fitness": sum(fitness),
+            "fitness": fitness,
         }
     except Exception as e:
         result = {
