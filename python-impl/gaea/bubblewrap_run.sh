@@ -37,6 +37,15 @@ if [[ -n $DEV_BIND_ARGS ]]; then
     DEV_BIND_ARGS="--dev /dev --dev-bind /dev/nvidiactl /dev/nvidiactl --dev-bind /dev/nvidia-uvm /dev/nvidia-uvm $DEV_BIND_ARGS "
 fi
 bwrap \
-    --ro-bind / / \
+    --ro-bind /usr /usr \
+    --ro-bind /home /home \
+    --symlink usr/lib /lib \
+    --symlink usr/lib64 /lib64 \
+    --symlink usr/bin /bin \
+    --symlink usr/sbin /sbin \
+    --tmpfs /tmp \
+    --die-with-parent \
+    --unshare-all \
+    --hostname sandbox \
     $DEV_BIND_ARGS \
     ${args[@]}
