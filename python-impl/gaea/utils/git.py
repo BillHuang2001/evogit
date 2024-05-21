@@ -58,11 +58,10 @@ def init_git_repo(config: GAEAConfig):
     subprocess.run(["git", "commit", "-q", "-m", "init"], cwd=git_dir, check=True)
 
 
-def read_head_commit(config: GAEAConfig):
-    """Read the commit id of the current HEAD."""
+def get_commit_by_branch(config: GAEAConfig, branch: str):
     return (
         subprocess.run(
-            ["git", "rev-parse", "HEAD"],
+            ["git", "rev-parse", branch],
             cwd=config.git_dir,
             check=True,
             capture_output=True,
@@ -70,6 +69,24 @@ def read_head_commit(config: GAEAConfig):
         .stdout.decode("utf-8")
         .strip()
     )
+
+
+def read_head_commit(config: GAEAConfig) -> str:
+    """Read the commit id of the current HEAD."""
+    return get_commit_by_branch(config, "HEAD")
+
+
+def list_branches(config: GAEAConfig) -> list[str]:
+    """List all branches in this repo."""
+    branches = subprocess.run(
+        ["git", "branch"],
+        cwd=config.git_dir,
+        check=True,
+        capture_output=True,
+    ).stdout.decode("utf-8")
+    branches = branches.split("\n")
+    branches = [branch.strip() for branch in branches if branch != ""]
+    return branches
 
 
 def add_note(config: GAEAConfig, note: str, overwrite: bool = False):
