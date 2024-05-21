@@ -24,7 +24,7 @@ git_conflict_pattern = re.compile(
 )
 
 
-def init_git_repo(config: GAEAConfig):
+def init_git_repo(config: GAEAConfig) -> None:
     git_dir = config.git_dir
     if os.path.exists(git_dir):
         print(f"{git_dir} already exists! Do you want to remove it? (y/n)")
@@ -58,7 +58,7 @@ def init_git_repo(config: GAEAConfig):
     subprocess.run(["git", "commit", "-q", "-m", "init"], cwd=git_dir, check=True)
 
 
-def get_commit_by_branch(config: GAEAConfig, branch: str):
+def get_commit_by_branch(config: GAEAConfig, branch: str) -> str:
     return (
         subprocess.run(
             ["git", "rev-parse", branch],
@@ -89,7 +89,7 @@ def list_branches(config: GAEAConfig) -> list[str]:
     return branches
 
 
-def add_note(config: GAEAConfig, note: str, overwrite: bool = False):
+def add_note(config: GAEAConfig, note: str, overwrite: bool = False) -> None:
     """Add a note to the current commit. If overwrite is True, force overwrite the existing note."""
 
     cmd = ["git", "notes", "add", "-m", note]
@@ -99,7 +99,7 @@ def add_note(config: GAEAConfig, note: str, overwrite: bool = False):
     subprocess.run(cmd, cwd=config.git_dir, check=True)
 
 
-def read_note(config: GAEAConfig, commit: Optional[str]):
+def read_note(config: GAEAConfig, commit: Optional[str]) -> Optional[str]:
     """Read the note of the specified commit. If commit is None, read the note of the current HEAD.
     Return None if the note does not exist.
     """
@@ -120,7 +120,9 @@ def read_note(config: GAEAConfig, commit: Optional[str]):
         return completed_proc.stdout.decode("utf-8")
 
 
-def update_file(config: GAEAConfig, commit: str, new_content: str, commit_message: str):
+def update_file(
+    config: GAEAConfig, commit: str, new_content: str, commit_message: str
+) -> None:
     """Update the content of the file in the specified commit_id and commit the updated file."""
     checkout(config, commit)
     with open(os.path.join(config.git_dir, config.filename), "r+") as f:
@@ -139,7 +141,7 @@ def update_file(config: GAEAConfig, commit: str, new_content: str, commit_messag
     )
 
 
-def read_file(config: GAEAConfig, commit: str):
+def read_file(config: GAEAConfig, commit: str) -> str:
     """Read the content of the file in the specified commit."""
     return subprocess.run(
         ["git", "show", f"{commit}:{config.filename}"],
@@ -149,11 +151,11 @@ def read_file(config: GAEAConfig, commit: str):
     ).stdout.decode("utf-8")
 
 
-def batch_read_files(config: GAEAConfig, commits: list[str]):
+def batch_read_files(config: GAEAConfig, commits: list[str]) -> list[str]:
     return [read_file(config, commit) for commit in commits]
 
 
-def has_conflict(config: GAEAConfig):
+def has_conflict(config: GAEAConfig) -> bool:
     """Return True if the current working directory has conflicts. Otherwise, return False."""
     status = subprocess.run(
         ["git", "status"], cwd=config.git_dir, capture_output=True, check=True
@@ -165,7 +167,7 @@ def has_conflict(config: GAEAConfig):
         return False
 
 
-def count_conflicts(config: GAEAConfig):
+def count_conflicts(config: GAEAConfig) -> int:
     """Count the number of conflicts in the current working directory."""
     with open(os.path.join(config.git_dir, config.filename), "r") as f:
         content = f.read()
@@ -173,7 +175,7 @@ def count_conflicts(config: GAEAConfig):
     return len(git_conflict_pattern.findall(content))
 
 
-def checkout(config: GAEAConfig, commit: str):
+def checkout(config: GAEAConfig, commit: str) -> None:
     """Checkout the specified commit."""
     # -q is quiet, --detach is used to checkout the commit in detached HEAD mode
     subprocess.run(
@@ -181,13 +183,13 @@ def checkout(config: GAEAConfig, commit: str):
     )
 
 
-def merge_branches(config: GAEAConfig, commit: str):
+def merge_branches(config: GAEAConfig, commit: str) -> None:
     """merge the commit specified by the commit_id to the current branch."""
     # don't check the return code because the merge may fail
     subprocess.run(["git", "merge", "-q", commit, "--no-edit"], cwd=config.git_dir)
 
 
-def rebase_branches(config: GAEAConfig, commit: str):
+def rebase_branches(config: GAEAConfig, commit: str) -> None:
     """rebase the current branch on the commit specified by the commit_id."""
     # don't check the return code because the rebase may fail
     # GIT_EDITOR=true is used to disable the interactive editor
@@ -199,7 +201,7 @@ def rebase_branches(config: GAEAConfig, commit: str):
     )
 
 
-def continue_merge(config: GAEAConfig):
+def continue_merge(config: GAEAConfig) -> None:
     """Continue the merge process."""
     subprocess.run(
         ["git", "merge", "--continue"],
@@ -209,7 +211,7 @@ def continue_merge(config: GAEAConfig):
     )
 
 
-def continue_rebase(config: GAEAConfig):
+def continue_rebase(config: GAEAConfig) -> None:
     """Continue the rebase process."""
     # GIT_EDITOR=true is used to disable the interactive editor
     # and accept the default commit message
@@ -218,7 +220,7 @@ def continue_rebase(config: GAEAConfig):
     )
 
 
-def handle_conflict(config: GAEAConfig, strategy: list[bool]):
+def handle_conflict(config: GAEAConfig, strategy: list[bool]) -> None:
     """Handle the conflict by accept ours or theirs.
     The strategy is a list of bool values, where True means accepting ours, and False means accepting theirs.
     Write back the result to the file and git add.
@@ -244,7 +246,7 @@ def handle_conflict(config: GAEAConfig, strategy: list[bool]):
 
 def branches_track_commits(
     config: GAEAConfig, branch_names: list[str], commits: list[str]
-):
+) -> None:
     """Create branches that track the specified commits."""
     for branch_name, commit in zip(branch_names, commits):
         subprocess.run(
@@ -252,7 +254,7 @@ def branches_track_commits(
         )
 
 
-def push_branch_to_remote(config: GAEAConfig, branch_name: str, remote: str):
+def push_branch_to_remote(config: GAEAConfig, branch_name: str, remote: str) -> None:
     """Push the branch to the remote repository along side with the notes."""
     checkout(config, branch_name)
     subprocess.run(

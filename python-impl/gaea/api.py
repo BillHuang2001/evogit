@@ -13,7 +13,7 @@ from .utils import git, llm
 logger = logging.getLogger("gaea")
 
 
-def update_branches(config: GAEAConfig, pop: list[str]):
+def update_branches(config: GAEAConfig, pop: list[str]) -> None:
     """The branches are used to track the current state of the population"""
     branch_names = []
     hostname = config.hostname if config.hostname is not None else "host0"
@@ -24,19 +24,19 @@ def update_branches(config: GAEAConfig, pop: list[str]):
     git.branches_track_commits(config, branch_names, pop)
 
 
-def get_initial_branches(config: GAEAConfig, pop_size: int):
+def get_initial_branches(config: GAEAConfig, pop_size: int) -> list[str]:
     """Get the initial branches"""
 
     head = git.read_head_commit(config)
     return [head for _ in range(pop_size)]
 
 
-def push_all_branches(config: GAEAConfig):
+def push_all_branches(config: GAEAConfig) -> None:
     """Push all branches to the remote"""
     pass
 
 
-def evaluate(config: GAEAConfig, commit: str, cmd: list[str]):
+def evaluate(config: GAEAConfig, commit: str, cmd: list[str]) -> dict[str, str]:
     """Evaluate the the result of the individual.
 
     Parameters
@@ -98,7 +98,7 @@ def evaluate(config: GAEAConfig, commit: str, cmd: list[str]):
     return result
 
 
-def git_crossover(config: GAEAConfig, seed: int, commit1: str, commit2: str):
+def git_crossover(config: GAEAConfig, seed: int, commit1: str, commit2: str) -> str:
     """crossover between commit1 and commit2"""
     rng = np.random.default_rng(seed)
     use_merge = rng.choice([True, False], p=[config.merge_prob, 1 - config.merge_prob])
@@ -110,7 +110,9 @@ def git_crossover(config: GAEAConfig, seed: int, commit1: str, commit2: str):
     return git.read_head_commit(config)
 
 
-def git_merge(config: GAEAConfig, rng: np.random.Generator, commit1: str, commit2: str):
+def git_merge(
+    config: GAEAConfig, rng: np.random.Generator, commit1: str, commit2: str
+) -> None:
     git.checkout(config, commit1)
     git.merge_branches(config, commit2)
 
@@ -129,7 +131,7 @@ def git_merge(config: GAEAConfig, rng: np.random.Generator, commit1: str, commit
 
 def git_rebase(
     config: GAEAConfig, rng: np.random.Generator, commit1: str, commit2: str
-):
+) -> None:
     git.checkout(config, commit1)
     git.rebase_branches(config, commit2)
 
@@ -146,7 +148,7 @@ def git_rebase(
     assert not git.has_conflict(config)
 
 
-def prepare_llm_backend(config: GAEAConfig):
+def prepare_llm_backend(config: GAEAConfig) -> llm.LLMBackend:
     if "/" in config.llm_name:
         # e.g. meta-llama/Meta-Llama-3-8B-Instruct
         # which refers to a huggingface model
@@ -155,7 +157,7 @@ def prepare_llm_backend(config: GAEAConfig):
         return llm.GeminiBackend(config.api_key, config.http_req_params)
 
 
-def llm_mutation(config, llm_backend, seeds, commits):
+def llm_mutation(config, llm_backend, seeds, commits) -> list[str]:
     prompts = []
     for commit in commits:
         code = git.read_file(config, commit)
