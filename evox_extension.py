@@ -128,7 +128,7 @@ class LLMMutation:
 
 def evaluate(config, pop):
     pop = [array_to_hex(individual) for individual in pop]
-    logger = logging.getLogger("main")
+    logger = logging.getLogger("gaea")
     logger.info(pop)
     output = [
         api.evaluate(
@@ -153,7 +153,10 @@ def evaluate(config, pop):
                     fit = stdout["fitness"]
                 else:
                     fit = illegal_value
-            except json.decoder.JSONDecodeError:
+            except json.JSONDecodeError:
+                fit = illegal_value
+            except Exception as e:
+                logger.error(f"Unknown error occurred: {e}")
                 fit = illegal_value
         fitness.append(fit)
     return jnp.array(fitness)

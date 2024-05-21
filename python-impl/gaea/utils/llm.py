@@ -27,7 +27,7 @@ class GeminiBackend:
         self.api_key = api_key
         self.http_req_params = http_req_params
         self.url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent"
-        self.logger = logging.getLogger("main")
+        self.logger = logging.getLogger("gaea")
         self.num_retry = 5
 
     def restful_request(self, query: str):
@@ -97,7 +97,7 @@ class HuggingfaceModel:
         trust_remote_code=False,
         num_workers=1,
     ):
-        self.logger = logging.getLogger("main")
+        self.logger = logging.getLogger("gaea")
 
         self.tokenizer = AutoTokenizer.from_pretrained(
             model, trust_remote_code=trust_remote_code

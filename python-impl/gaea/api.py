@@ -10,6 +10,9 @@ from .config import GAEAConfig
 from .utils import git, llm
 
 
+logger = logging.getLogger("gaea")
+
+
 def update_branches(config: GAEAConfig, pop: list[str]):
     """The branches are used to track the current state of the population"""
     branch_names = []
@@ -54,7 +57,6 @@ def evaluate(config: GAEAConfig, commit: str, cmd: list[str]):
             "timeout": bool
         }
     """
-    logger = logging.getLogger("main")
     git.checkout(config, commit)
     if not config.reevaluate:
         # try to read the result from the git notes
@@ -165,7 +167,13 @@ def llm_mutation(config, llm_backend, seeds, commits):
                 stack_trace = None
             else:
                 timeout = False
-                stack_trace = json.loads(note["stdout"])["stack_trace"]
+                try:
+                    stack_trace = json.loads(note["stdout"])["stack_trace"]
+                except json.JSONDecodeError:
+                    logger.warning(
+                        f"Failed to parse the stack trace of {commit} with note: {note}"
+                    )
+                    stack_trace = None
 
         prompts.append(config.prompt_constructor(code, stack_trace, timeout))
 
