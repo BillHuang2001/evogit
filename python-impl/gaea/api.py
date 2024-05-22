@@ -3,6 +3,7 @@ import subprocess
 import logging
 import re
 from pathlib import Path
+from typing import Any
 
 import numpy as np
 
@@ -27,8 +28,21 @@ def update_branches(config: GAEAConfig, pop: list[str]) -> None:
 def get_initial_branches(config: GAEAConfig, pop_size: int) -> list[str]:
     """Get the initial branches"""
 
-    head = git.read_head_commit(config)
-    return [head for _ in range(pop_size)]
+    branches = git.list_branches(config)
+    # filter out "master" and "main" branches, both are not used for evolution
+    # also filter out detached branches, those are intermediate states
+    branches = [
+        b for b in branches if b not in ["master", "main"] and "detached" not in b
+    ]
+
+    pop = branches[:pop_size]
+    pop = [git.get_commit_by_branch(config, branch) for branch in pop]
+
+    while len(pop) < pop_size:
+        head = git.read_head_commit(config)
+        pop.append(head)
+
+    return pop
 
 
 def push_all_branches(config: GAEAConfig) -> None:
@@ -148,7 +162,7 @@ def git_rebase(
     assert not git.has_conflict(config)
 
 
-def prepare_llm_backend(config: GAEAConfig) -> llm.LLMBackend:
+def prepare_llm_backend(config: GAEAConfig) -> Any:
     if "/" in config.llm_name:
         # e.g. meta-llama/Meta-Llama-3-8B-Instruct
         # which refers to a huggingface model
