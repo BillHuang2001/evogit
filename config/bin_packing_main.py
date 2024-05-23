@@ -41,9 +41,8 @@ if __name__ == "__main__":
             num_bins = random.randint(2, NUM_MAX_BINS)
             data = [random.random() for _ in range(num_bins)]
             plan = bin_packing(data)
-            assert plan is not None, "The return value of the algorithm is None."
             if not valid_plan(data, plan):
-                fitness.append(1e6)
+                raise ValueError("Invalid plan")
             else:
                 fitness.append(max(plan) + 1)
 
