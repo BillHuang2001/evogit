@@ -24,8 +24,7 @@ git_conflict_pattern = re.compile(
 )
 
 
-def init_git_repo(config: GAEAConfig) -> None:
-    git_dir = config.git_dir
+def _create_git_dir(git_dir) -> None:
     if os.path.exists(git_dir):
         print(f"{git_dir} already exists! Do you want to remove it? (y/n)")
         if input() == "y":
@@ -44,6 +43,11 @@ def init_git_repo(config: GAEAConfig) -> None:
     else:
         os.mkdir(git_dir, mode=0o755)
 
+
+def init_git_repo(config: GAEAConfig) -> None:
+    git_dir = config.git_dir
+    _create_git_dir(git_dir)
+
     subprocess.run(
         ["git", "init", "--object-format", config.git_hash], cwd=git_dir, check=True
     )
@@ -56,6 +60,30 @@ def init_git_repo(config: GAEAConfig) -> None:
     shutil.copy(config.seed_file, os.path.join(git_dir, config.filename))
     subprocess.run(["git", "add", "."], cwd=git_dir, check=True)
     subprocess.run(["git", "commit", "-q", "-m", "init"], cwd=git_dir, check=True)
+
+    if config.remote_repo is not None:
+        subprocess.run(
+            ["git", "remote", "add", "origin", config.remote_repo],
+            cwd=git_dir,
+            check=True,
+        )
+        subprocess.run(
+            ["git", "push", "-f", "origin", "master"], cwd=git_dir, check=True
+        )
+
+
+def clone_git_repo(config: GAEAConfig) -> None:
+    if config.remote_repo is None:
+        raise ValueError("remote_repo is not set in the config.")
+
+    git_dir = config.git_dir
+    _create_git_dir(git_dir)
+
+    subprocess.run(
+        ["git", "clone", config.remote_repo, git_dir],
+        cwd=config.git_dir,
+        check=True,
+    )
 
 
 def get_commit_by_branch(config: GAEAConfig, branch: str) -> str:
@@ -76,16 +104,45 @@ def read_head_commit(config: GAEAConfig) -> str:
     return get_commit_by_branch(config, "HEAD")
 
 
-def list_branches(config: GAEAConfig) -> list[str]:
-    """List all branches in this repo."""
+def list_branches(
+    config: GAEAConfig, list_remote: bool = False, ea_only: bool = True
+) -> list[str]:
+    """List all branches in this repo.
+    Parameters
+    ----------
+    list_remote:
+        If True, list the remote branches. Otherwise, list the local branches.
+    ea_only
+        If True, only return the branches that are related to the EA.
+        Master, main and detached head branches will be excluded.
+    """
+    cmd = ["git", "branch", "--no-color"]
+    if list_remote:
+        cmd.append("-r")
+
     branches = subprocess.run(
-        ["git", "branch"],
+        cmd,
         cwd=config.git_dir,
         check=True,
         capture_output=True,
     ).stdout.decode("utf-8")
     branches = branches.split("\n")
     branches = [branch.strip() for branch in branches if branch != ""]
+    # the current branch is marked with a "* "
+    # find it and remove the "* "
+    for i, branch in enumerate(branches):
+        if branch.startswith("* "):
+            branches[i] = branch[2:]
+            break
+
+    if ea_only:
+        branches = [
+            b for b in branches if not ("detached" in b or "master" in b or "main" in b)
+        ]
+
+    if list_remote:
+        branches = ["remotes/" + b for b in branches]
+
     return branches
 
 
@@ -254,14 +311,27 @@ def branches_track_commits(
         )
 
 
-def push_branch_to_remote(config: GAEAConfig, branch_name: str, remote: str) -> None:
+def push_to_remote(config: GAEAConfig, branches: list[str]) -> None:
     """Push the branch to the remote repository along side with the notes."""
-    checkout(config, branch_name)
+    for branch in branches:
+        subprocess.run(
+            ["git", "push", "-f", config.remote_repo, f"{branch}:{branch}"],
+            cwd=config.git_dir,
+            check=True,
+        )
+
     subprocess.run(
-        ["git", "push", "-f", remote, branch_name], cwd=config.git_dir, check=True
+        ["git", "push", config.remote_repo, f"{branch}:refs/notes/*"],
+        cwd=config.git_dir,
+        check=True,
     )
+
+
+def fetch_from_remote(config: GAEAConfig) -> None:
+    """Fetch the notes from the remote repository."""
+    subprocess.run(["git", "fetch", config.remote_repo], cwd=config.git_dir, check=True)
     subprocess.run(
-        ["git", "push", remote, f"{branch_name}:refs/notes/commits"],
+        ["git", "fetch", config.remote_repo, "refs/notes/*"],
         cwd=config.git_dir,
         check=True,
     )
