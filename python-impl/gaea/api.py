@@ -31,10 +31,6 @@ def get_initial_branches(config: GAEAConfig, pop_size: int) -> list[str]:
     branches = git.list_branches(config)
     # filter out "master" and "main" branches, both are not used for evolution
     # also filter out detached branches, those are intermediate states
-    branches = [
-        b for b in branches if b not in ["master", "main"] and "detached" not in b
-    ]
-
     pop = branches[:pop_size]
     pop = [git.get_commit_by_branch(config, branch) for branch in pop]
 
