@@ -63,7 +63,7 @@ def get_initial_branches(config: GAEAConfig, pop_size: int) -> list[str]:
 
     # If not enough, try to load the branches from the remote repository
     if len(pop) < pop_size:
-        remote_branches = git.list_remote_branches(config, list_remote=True)
+        remote_branches = git.list_branches(config, list_remote=True)
         remote_pop = remote_branches[: pop_size - len(pop)]
         remote_pop = [git.get_commit_by_branch(config, branch) for branch in remote_pop]
         pop.extend(remote_pop)
