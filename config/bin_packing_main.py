@@ -11,6 +11,12 @@ NUM_MAX_BINS = 1000
 def valid_plan(data, plan):
     if plan is None or not isinstance(plan, list):
         return False
+    
+    if len(plan) != len(data):
+        return False
+
+    if min(plan) != 0:
+        return False
 
     bins = [[] for _ in range(max(plan) + 1)]
     for item, bin_id in zip(data, plan):
