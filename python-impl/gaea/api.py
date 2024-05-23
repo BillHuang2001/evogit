@@ -14,6 +14,26 @@ from .utils import git, llm
 logger = logging.getLogger("gaea")
 
 
+def init_repo(config: GAEAConfig, origin="local") -> None:
+    """Initialize the git repository
+
+    Parameters
+    ----------
+    config
+        The configuration object.
+    origin
+        "local" or "remote"
+        When "local", the repository is initialized locally.
+        When "remote", the repository is initialized by cloning from the remote repository.
+    """
+    if origin == "local":
+        git.init_git_repo(config)
+    elif origin == "remote":
+        git.clone_git_repo(config)
+    else:
+        raise ValueError(f"Unknown option: {origin}")
+
+
 def update_branches(config: GAEAConfig, pop: list[str]) -> None:
     """The branches are used to track the current state of the population"""
     branch_names = []
@@ -26,14 +46,29 @@ def update_branches(config: GAEAConfig, pop: list[str]) -> None:
 
 
 def get_initial_branches(config: GAEAConfig, pop_size: int) -> list[str]:
-    """Get the initial branches"""
+    """Get the initial branches with a simple strategy.
+    1. Try to load the existing branches from the local repository.
+        Existing branches are the branches that are already created from previous runs.
+        This implies that we will try to restore from the previous state.
+    2. If not enough, try to load the branches from the remote repository.
+        Normally this happens when a new node joins the evolution.
+        So it tries to kickstart the evolution by loading the branches from the remote.
+    3. If still not enough, create new branches from the current head.
+    """
 
+    # Try to load the branches from the local repository
     branches = git.list_branches(config)
-    # filter out "master" and "main" branches, both are not used for evolution
-    # also filter out detached branches, those are intermediate states
     pop = branches[:pop_size]
     pop = [git.get_commit_by_branch(config, branch) for branch in pop]
 
+    # If not enough, try to load the branches from the remote repository
+    if len(pop) < pop_size:
+        remote_branches = git.list_remote_branches(config, list_remote=True)
+        remote_pop = remote_branches[: pop_size - len(pop)]
+        remote_pop = [git.get_commit_by_branch(config, branch) for branch in remote_pop]
+        pop.extend(remote_pop)
+
+    # If still not enough, create new branches from the current head
     while len(pop) < pop_size:
         head = git.read_head_commit(config)
         pop.append(head)
@@ -41,9 +76,14 @@ def get_initial_branches(config: GAEAConfig, pop_size: int) -> list[str]:
     return pop
 
 
-def push_all_branches(config: GAEAConfig) -> None:
+def push_local_branches(config: GAEAConfig) -> None:
     """Push all branches to the remote"""
-    pass
+    branches = git.list_branches(config)
+    git.push_branches(config, branches)
+
+
+def fetch_remote_branches(config: GAEAConfig) -> None:
+    git.fetch_from_remote(config)
 
 
 def evaluate(config: GAEAConfig, commit: str, cmd: list[str]) -> dict[str, str]:

@@ -7,6 +7,9 @@ class GAEAConfig:
     num_objectives: int
     git_user_name: str
     git_user_email: str
+    push_every: int
+    fetch_every: int
+    human_every: int
     llm_name: str
     device_map: str
     git_dir: str
