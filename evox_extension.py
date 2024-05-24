@@ -88,6 +88,7 @@ def git_crossover(config, type, key, parents):
 
 def gaea_llm_mutation(config, llm_backend, seeds, pop):
     commits = [array_to_hex(commit) for commit in pop]
+    seeds = seeds.tolist()
     new_commits = api.llm_mutation(config, llm_backend, seeds, commits)
     offspring = [hex_to_array(new_commit) for new_commit in new_commits]
 
@@ -159,7 +160,7 @@ def evaluate(config, pop):
                 logger.error(f"Unknown error occurred: {e}")
                 fit = illegal_value
         fitness.append(fit)
-    return jnp.array(fitness)
+    return jnp.array(fitness).astype(jnp.float32)
 
 
 @jit_class
