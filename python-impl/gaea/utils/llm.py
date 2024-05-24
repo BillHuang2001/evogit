@@ -3,6 +3,7 @@ Utility functions for the controlling LLM models.
 """
 
 import logging
+from concurrent.futures import ThreadPoolExecutor
 import time
 from functools import reduce
 
@@ -79,6 +80,74 @@ class GeminiBackend:
                             "Failed to query Gemini. Sleep and retry..."
                         )
                         time.sleep(30)
+
+        self.logger.info("LLM model responses:")
+        for response in responses:
+            self.logger.info(response + "\n")
+
+        return responses
+
+
+class TGIBackend:
+    def __init__(
+        self,
+        url: str = "http://127.0.0.1:8080/v1/chat/completions",
+        http_req_params: dict = {},
+        num_workers=32,
+    ) -> None:
+        """
+        Parameters
+        ----------
+        url
+            The URL of the TGI API.
+        http_req_params
+            Additional HTTP request parameters.
+            Common parameters include `timeout`, `proxies`, etc.
+        """
+        super().__init__()
+        self.url = url
+        self.http_req_params = http_req_params
+        self.logger = logging.getLogger("gaea")
+        self.num_workers = num_workers
+        if num_workers > 1:
+            self.pool = ThreadPoolExecutor(max_workers=num_workers)
+
+    def _one_restful_request(self, args):
+        seed, query = args
+        headers = {
+            "Content-Type": "application/json",
+        }
+        messages = [
+            {
+                "role": "user",
+                "content": query,
+            }
+        ]
+        data = {
+            "messages": messages,
+            "stream": False,
+            "model": "",
+            "seed": seed,
+            "max_tokens": 2048,
+        }
+        response = httpx.post(
+            self.url, headers=headers, json=data, **self.http_req_params
+        )
+        return response.json()["choices"][0]["message"]["content"]
+
+    def query(self, seeds, queries):
+        self.logger.info("Querying LLM model...")
+        for query in queries:
+            self.logger.info(query + "\n")
+
+        if self.num_workers > 1:
+            responses = list(
+                self.pool.map(self._one_restful_request, zip(seeds, queries))
+            )
+        else:
+            responses = []
+            for seed, query in zip(seeds, queries):
+                responses.append(self._one_restful_request((seed, query)))
 
         self.logger.info("LLM model responses:")
         for response in responses:

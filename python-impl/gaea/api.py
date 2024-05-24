@@ -205,6 +205,8 @@ def prepare_llm_backend(config: GAEAConfig) -> Any:
         return llm.HuggingfaceModel(config.llm_name, config.device_map)
     elif config.llm_name.lower() == "gemini":
         return llm.GeminiBackend(config.api_key, config.http_req_params)
+    elif config.llm_name.lower() == "tgi":
+        return llm.TGIBackend(http_req_params=config.http_req_params)
 
 
 def llm_mutation(config, llm_backend, seeds, commits) -> list[str]:
