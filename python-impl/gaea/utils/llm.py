@@ -27,7 +27,7 @@ class GeminiBackend:
         super().__init__()
         self.api_key = api_key
         self.http_req_params = http_req_params
-        self.url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent"
+        self.url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent"
         self.logger = logging.getLogger("gaea")
         self.num_retry = 5
 
