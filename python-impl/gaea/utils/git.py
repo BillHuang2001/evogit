@@ -99,6 +99,10 @@ def get_commit_by_branch(config: GAEAConfig, branch: str) -> str:
     )
 
 
+def get_commit_by_tag(config: GAEAConfig, tag: str) -> str:
+    return get_commit_by_branch(config, f"tags/{tag}")
+
+
 def read_head_commit(config: GAEAConfig) -> str:
     """Read the commit id of the current HEAD."""
     return get_commit_by_branch(config, "HEAD")
@@ -144,6 +148,28 @@ def list_branches(
         branches = ["remotes/" + b for b in branches]
 
     return branches
+
+
+def list_tags(config: GAEAConfig) -> list[str]:
+    """List all tags in this repo."""
+    tags = subprocess.run(
+        ["git", "tag"],
+        cwd=config.git_dir,
+        check=True,
+        capture_output=True,
+    ).stdout.decode("utf-8")
+    tags = tags.split("\n")
+    tags = [tag.strip() for tag in tags if tag != ""]
+    return tags
+
+
+def delete_tags(config: GAEAConfig, tags: list[str]) -> None:
+    """Delete the specified tags."""
+    subprocess.run(
+        ["git", "tag", "-d"] + tags,
+        cwd=config.git_dir,
+        check=True,
+    )
 
 
 def add_note(config: GAEAConfig, note: str, overwrite: bool = False) -> None:
@@ -315,23 +341,24 @@ def push_to_remote(config: GAEAConfig, branches: list[str]) -> None:
     """Push the branch to the remote repository along side with the notes."""
     for branch in branches:
         subprocess.run(
-            ["git", "push", "-f", config.remote_repo, f"{branch}:{branch}"],
+            ["git", "push", "-q", "-f", config.remote_repo, f"{branch}:{branch}"],
             cwd=config.git_dir,
             check=True,
         )
 
-    subprocess.run(
-        ["git", "push", config.remote_repo, f"{branch}:refs/notes/*"],
-        cwd=config.git_dir,
-        check=True,
-    )
+    # subprocess.run(
+    #     ["git", "push", "-q", config.remote_repo, "refs/notes/*"],
+    #     cwd=config.git_dir,
+    #     check=True,
+    # )
 
 
 def fetch_from_remote(config: GAEAConfig) -> None:
     """Fetch the notes from the remote repository."""
+    return
     subprocess.run(["git", "fetch", config.remote_repo], cwd=config.git_dir, check=True)
     subprocess.run(
-        ["git", "fetch", config.remote_repo, "refs/notes/*"],
+        ["git", "fetch", "-q", config.remote_repo, "refs/notes/*:refs/notes/*"],
         cwd=config.git_dir,
         check=True,
     )

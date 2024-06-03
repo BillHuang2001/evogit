@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Optional
+from typing import Optional, Any
 
 
 @dataclass
@@ -9,8 +9,11 @@ class GAEAConfig:
     git_user_email: str
     push_every: int
     fetch_every: int
+    migrate_every: int
     human_every: int
+    migrate_count: int
     llm_name: str
+    llm_backend: Any
     device_map: str
     git_dir: str
     eval_command: list[str]
@@ -24,8 +27,6 @@ class GAEAConfig:
     timeout: int
     prompt_constructor: callable
     respond_extractor: callable
-    api_key: Optional[str]
-    http_req_params: dict
     remote_repo: Optional[str]
     hostname: Optional[str]
 

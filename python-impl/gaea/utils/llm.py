@@ -14,7 +14,7 @@ from transformers import AutoModelForCausalLM, AutoTokenizer, Conversation
 
 
 class GeminiBackend:
-    def __init__(self, api_key: str, http_req_params: dict = {}) -> None:
+    def __init__(self, api_key: str, http_req_params: dict = {}, **kwargs) -> None:
         """
         Parameters
         ----------
@@ -94,6 +94,7 @@ class TGIBackend:
         url: str = "http://127.0.0.1:8080/v1/chat/completions",
         http_req_params: dict = {},
         num_workers=32,
+        **kwargs,
     ) -> None:
         """
         Parameters
@@ -165,6 +166,7 @@ class HuggingfaceModel:
         device_map="auto",
         trust_remote_code=False,
         num_workers=1,
+        **kwargs,
     ):
         self.logger = logging.getLogger("gaea")
 

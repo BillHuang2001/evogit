@@ -1,7 +1,8 @@
 import json
-import subprocess
 import logging
 import re
+import subprocess
+from collections import namedtuple
 from pathlib import Path
 from typing import Any
 
@@ -9,7 +10,6 @@ import numpy as np
 
 from .config import GAEAConfig
 from .utils import git, llm
-
 
 logger = logging.getLogger("gaea")
 
@@ -79,7 +79,7 @@ def get_initial_branches(config: GAEAConfig, pop_size: int) -> list[str]:
 def push_local_branches(config: GAEAConfig) -> None:
     """Push all branches to the remote"""
     branches = git.list_branches(config)
-    git.push_branches(config, branches)
+    git.push_to_remote(config, branches)
 
 
 def fetch_remote_branches(config: GAEAConfig) -> None:
@@ -198,19 +198,29 @@ def git_rebase(
     assert not git.has_conflict(config)
 
 
-def prepare_llm_backend(config: GAEAConfig) -> Any:
-    if "/" in config.llm_name:
+def prepare_llm_backend(llm_name: str, *args, **kwargs) -> Any:
+    if "/" in llm_name:
         # e.g. meta-llama/Meta-Llama-3-8B-Instruct
         # which refers to a huggingface model
-        return llm.HuggingfaceModel(config.llm_name, config.device_map)
-    elif config.llm_name.lower() == "gemini":
-        return llm.GeminiBackend(config.api_key, config.http_req_params)
-    elif config.llm_name.lower() == "tgi":
-        return llm.TGIBackend(http_req_params=config.http_req_params)
+        return llm.HuggingfaceModel(llm_name, *args, **kwargs)
+    elif llm_name.lower() == "gemini":
+        return llm.GeminiBackend(*args, **kwargs)
+    elif llm_name.lower() == "tgi":
+        return llm.TGIBackend(*args, **kwargs)
 
 
-def llm_mutation(config, llm_backend, seeds, commits) -> list[str]:
-    prompts = []
+CodeInfo = namedtuple("CodeInfo", ["code", "stack_trace", "timeout"])
+
+
+def _construct_prompt(config, commits, chunk_size, operation_type) -> str:
+    """A helper function to construct the prompt.
+    Read the code and the related information (e.g. stack_trace) from the a list of commits.
+    Then feed into the prompt constructor.
+    The operation_type is either "mutation" or "crossover".
+    The prompt_constructor is a function with the following signature:
+    def prompt_constructor(operation_type: str, code_infos: List[CodeInfo]) -> str
+    """
+    code_infos = []
     for commit in commits:
         code = git.read_file(config, commit)
         note = git.read_note(config, commit)
@@ -229,13 +239,65 @@ def llm_mutation(config, llm_backend, seeds, commits) -> list[str]:
                     )
                     stack_trace = None
 
-        prompts.append(config.prompt_constructor(code, stack_trace, timeout))
+        code_infos.append(CodeInfo(code, stack_trace, timeout))
+
+    prompts = []
+    chunk = []
+    for code_info in code_infos:
+        chunk.append(code_info)
+        if len(chunk) == chunk_size:
+            prompts.append(config.prompt_constructor(operation_type, chunk))
+            chunk = []
+
+    return prompts
+
+
+def llm_mutation(config, llm_backend, seeds, commits) -> list[str]:
+    prompts = _construct_prompt(config, commits, 1, "mutation")
 
     responds = llm_backend.query(seeds, prompts)
     responds = [config.respond_extractor(response) for response in responds]
     offspring = []
     for commit, response in zip(commits, responds):
-        git.update_file(config, commit, response, f"{config.llm_name}_mutation")
+        code, commit_message = response
+        git.update_file(config, commit, code, f"{config.llm_name}: {commit_message}")
         offspring.append(git.read_head_commit(config))
 
     return offspring
+
+
+def llm_crossover(config, llm_backend, seeds, commits) -> list[str]:
+    prompts = _construct_prompt(config, commits, 2, "crossover")
+
+    responses = llm_backend.query(seeds, prompts)
+    responses = [config.respond_extractor(response) for response in responses]
+    offspring = []
+    for commit, response in zip(commits, responses):
+        code, commit_message = response
+        git.update_file(config, commit, code, f"{config.llm_name}: {commit_message}")
+        offspring.append(git.read_head_commit(config))
+
+    return offspring
+
+
+def migrate_from_human_tags(config: GAEAConfig, migrate_count: int) -> list[str]:
+    """Return migration candidates from human tags. The migrate_count set the upper limit of the number of candidates."""
+    all_tags = git.list_tags(config)
+    tags = [tag for tag in all_tags if tag.startswith("human")]
+    tags = tags[:migrate_count]
+    commits = [git.get_commit_by_tag(config, tag) for tag in tags]
+    git.delete_tags(config, tags)
+    return commits
+
+
+def migrate_from_other_hosts(config: GAEAConfig, migration_count: int) -> list[str]:
+    """Return migration candidates from other hosts. The migration_count set the upper limit of the number of candidates."""
+    remote_branches = git.list_branches(config, list_remote=True)
+    hostname = config.hostname if config.hostname is not None else "host0"
+    branches = [branch for branch in remote_branches if not branch.startswith(hostname)]
+    import random
+
+    random.shuffle(branches)
+    branches = branches[:migration_count]
+    commits = [git.get_commit_by_branch(config, branch) for branch in branches]
+    return commits

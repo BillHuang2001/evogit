@@ -38,6 +38,8 @@ class BranchMonitor(Monitor):
         population_name="population",
     ):
         super().__init__()
+        self.config = config
+        self.generation = 0
         self.population_name = population_name
 
         def update_branches(pop):
@@ -52,6 +54,15 @@ class BranchMonitor(Monitor):
     def post_step(self, state):
         population = getattr(state.get_child_state("algorithm"), self.population_name)
         io_callback(self.update_branches, None, population)
+        io_callback(self.git_update, None)
+
+    def git_update(self):
+        if self.generation % self.config.fetch_every == 0:
+            api.fetch_remote_branches(self.config)
+        if self.generation % self.config.push_every == 0:
+            api.push_local_branches(self.config)
+
+        self.generation += 1
 
     def get_population_history(self):
         return self.population_history
@@ -95,6 +106,15 @@ def gaea_llm_mutation(config, llm_backend, seeds, pop):
     return jnp.stack(offspring)
 
 
+def gaea_llm_crossover(config, llm_backend, seeds, pop):
+    commits = [array_to_hex(commit) for commit in pop]
+    seeds = seeds.tolist()
+    new_commits = api.llm_crossover(config, llm_backend, seeds, commits)
+    offspring = [hex_to_array(new_commit) for new_commit in new_commits]
+
+    return jnp.stack(offspring)
+
+
 @partial(jax.jit, static_argnums=(0, 1))
 def llm_mutation(config, llm_backend, key, pop):
     pop_size = pop.shape[0]
@@ -104,6 +124,18 @@ def llm_mutation(config, llm_backend, key, pop):
     return_type = jax.ShapeDtypeStruct((pop_size, byte_length), jnp.uint8)
     return io_callback(
         partial(gaea_llm_mutation, config, llm_backend), return_type, seeds, pop
+    )
+
+
+@partial(jax.jit, static_argnums=(0, 1))
+def llm_crossover(config, llm_backend, key, pop):
+    pop_size = pop.shape[0]
+    seeds = jax.random.randint(key, (pop_size // 2,), 0, jnp.iinfo(jnp.int32).max)
+
+    byte_length = HASH_BYTE_LENGTH[config.git_hash]
+    return_type = jax.ShapeDtypeStruct((pop_size, byte_length), jnp.uint8)
+    return io_callback(
+        partial(gaea_llm_crossover, config, llm_backend), return_type, seeds, pop
     )
 
 
@@ -121,10 +153,20 @@ class GitCrossover:
 class LLMMutation:
     def __init__(self, config):
         self.config = config
-        self.llm_backend = api.prepare_llm_backend(config)
+        self.llm_backend = config.llm_backend
 
     def __call__(self, key, pop):
         return llm_mutation(self.config, self.llm_backend, key, pop)
+
+
+@jit_class
+class LLMCrossover:
+    def __init__(self, config):
+        self.config = config
+        self.llm_backend = config.llm_backend
+
+    def __call__(self, key, pop):
+        return llm_crossover(self.config, self.llm_backend, key, pop)
 
 
 def evaluate(config, pop):
@@ -186,3 +228,50 @@ def init_population(config, pop_size):
     pop = api.get_initial_branches(config, pop_size)
     pop = [hex_to_array(commit) for commit in pop]
     return jnp.stack(pop)
+
+
+class MigrateHelper:
+    def __init__(self, config):
+        self.config = config
+        self.generation = 0
+
+    def migrate_from_human(self):
+        byte_length = HASH_BYTE_LENGTH[self.config.git_hash]
+        return_type = (
+            jax.ShapeDtypeStruct((), jnp.bool_),
+            jax.ShapeDtypeStruct((1, byte_length), jnp.uint8),
+        )
+        return io_callback(self._migrate_from_human, return_type)
+
+    def migrate_from_other_hosts(self):
+        byte_length = HASH_BYTE_LENGTH[self.config.git_hash]
+        return_type = (
+            jax.ShapeDtypeStruct((), jnp.bool_),
+            jax.ShapeDtypeStruct((self.config.migrate_count, byte_length), jnp.uint8),
+        )
+        return io_callback(self._migrate_from_other_hosts, return_type)
+
+    def _migrate_from_human(self):
+        if self.generation % self.config.human_every == 0:
+            commit = api.migrate_from_human_tags(self.config, 1)
+
+            if commit:
+                return True, hex_to_array(commit)
+
+        return False, jnp.empty(
+            (1, HASH_BYTE_LENGTH[self.config.git_hash]), dtype=jnp.uint8
+        )
+
+    def _migrate_from_other_hosts(self):
+        if self.generation % self.config.migrate_every == 0:
+            commits = api.migrate_from_other_hosts(
+                self.config, self.config.migrate_count
+            )
+
+            if len(commits) == self.config.migrate_count:
+                return True, jnp.stack([hex_to_array(commit) for commit in commits])
+
+        return False, jnp.empty(
+            (self.config.migrate_count, HASH_BYTE_LENGTH[self.config.git_hash]),
+            dtype=jnp.uint8,
+        )
