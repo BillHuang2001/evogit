@@ -14,7 +14,7 @@ from .utils import git, llm
 logger = logging.getLogger("gaea")
 
 
-def init_repo(config: GAEAConfig, origin="local") -> None:
+def init_repo(config: GAEAConfig, origin="local", force_create=False) -> None:
     """Initialize the git repository
 
     Parameters
@@ -26,6 +26,7 @@ def init_repo(config: GAEAConfig, origin="local") -> None:
         When "local", the repository is initialized locally.
         When "remote", the repository is initialized by cloning from the remote repository.
     """
+    git.create_git_dir(config.git_dir, force_create)
     if origin == "local":
         git.init_git_repo(config)
     elif origin == "remote":

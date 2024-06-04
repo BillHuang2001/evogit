@@ -234,6 +234,7 @@ class MigrateHelper:
     def __init__(self, config):
         self.config = config
         self.generation = 0
+        self.logger = logging.getLogger("gaea")
 
     def migrate_from_human(self):
         byte_length = HASH_BYTE_LENGTH[self.config.git_hash]
@@ -256,7 +257,8 @@ class MigrateHelper:
             commit = api.migrate_from_human_tags(self.config, 1)
 
             if commit:
-                return True, hex_to_array(commit)
+                self.logger.info(f"Found commit by human: {commit}")
+                return True, jnp.array([hex_to_array(commit[0])])
 
         return False, jnp.empty(
             (1, HASH_BYTE_LENGTH[self.config.git_hash]), dtype=jnp.uint8
@@ -269,6 +271,7 @@ class MigrateHelper:
             )
 
             if len(commits) == self.config.migrate_count:
+                self.logger.info(f"Migrating commits from other hosts: {commits}")
                 return True, jnp.stack([hex_to_array(commit) for commit in commits])
 
         return False, jnp.empty(
