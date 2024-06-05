@@ -36,11 +36,13 @@ class BranchMonitor(Monitor):
         self,
         config,
         population_name="population",
+        sync_to_remote=True,
     ):
         super().__init__()
         self.config = config
         self.generation = 0
         self.population_name = population_name
+        self.sync_to_remote = sync_to_remote
 
         def update_branches(pop):
             pop = [array_to_hex(individual) for individual in pop]
@@ -54,7 +56,8 @@ class BranchMonitor(Monitor):
     def post_step(self, state):
         population = getattr(state.get_child_state("algorithm"), self.population_name)
         io_callback(self.update_branches, None, population)
-        io_callback(self.git_update, None)
+        if self.sync_to_remote:
+            io_callback(self.git_update, None)
 
     def git_update(self):
         if self.generation % self.config.fetch_every == 0:
