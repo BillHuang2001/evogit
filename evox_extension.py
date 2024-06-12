@@ -1,7 +1,6 @@
+from concurrent.futures import ThreadPoolExecutor
 import json
-import warnings
 from functools import partial
-from pathlib import Path
 import logging
 
 import jax
@@ -136,7 +135,7 @@ def llm_crossover(config, llm_backend, key, pop):
     seeds = jax.random.randint(key, (pop_size // 2,), 0, jnp.iinfo(jnp.int32).max)
 
     byte_length = HASH_BYTE_LENGTH[config.git_hash]
-    return_type = jax.ShapeDtypeStruct((pop_size, byte_length), jnp.uint8)
+    return_type = jax.ShapeDtypeStruct((pop_size // 2, byte_length), jnp.uint8)
     return io_callback(
         partial(gaea_llm_crossover, config, llm_backend), return_type, seeds, pop
     )
@@ -172,18 +171,12 @@ class LLMCrossover:
         return llm_crossover(self.config, self.llm_backend, key, pop)
 
 
-def evaluate(config, pop):
+def evaluate(config, pool, pop):
     pop = [array_to_hex(individual) for individual in pop]
     logger = logging.getLogger("gaea")
     logger.info(pop)
-    output = [
-        api.evaluate(
-            config,
-            commit,
-            config.eval_command,
-        )
-        for commit in pop
-    ]
+    output = list(pool.map(partial(api.evaluate, config), pop))
+    api.update_notes(config, pop, output)
     if config.num_objectives == 1:
         illegal_value = jnp.inf
     else:
@@ -212,6 +205,9 @@ def evaluate(config, pop):
 class CodegenProblem(Problem):
     def __init__(self, config):
         self.config = config
+        # ThreadPoolExecutor can achieve parallelism here
+        # since the evaluate function will spawn new processes through subprocess.run
+        self.pool = ThreadPoolExecutor(config.evaluate_workers)
 
     def evaluate(self, state, population):
         if self.config.num_objectives == 1:
@@ -222,7 +218,9 @@ class CodegenProblem(Problem):
             )
 
         return (
-            io_callback(partial(evaluate, self.config), return_dtype, population),
+            io_callback(
+                partial(evaluate, self.config, self.pool), return_dtype, population
+            ),
             state,
         )
 

@@ -1,6 +1,6 @@
 import json
 import logging
-import re
+import os
 import subprocess
 from collections import namedtuple
 from pathlib import Path
@@ -87,8 +87,8 @@ def fetch_remote_branches(config: GAEAConfig) -> None:
     git.fetch_from_remote(config)
 
 
-def evaluate(config: GAEAConfig, commit: str, cmd: list[str]) -> dict[str, str]:
-    """Evaluate the the result of the individual.
+def evaluate(config: GAEAConfig, commit: str) -> dict[str, str]:
+    """Evaluate the the result of the individual. This function can be run in parallel.
 
     Parameters
     ----------
@@ -108,7 +108,7 @@ def evaluate(config: GAEAConfig, commit: str, cmd: list[str]) -> dict[str, str]:
             "timeout": bool
         }
     """
-    git.checkout(config, commit)
+    worktree = git.add_temp_worktree(config, commit)
     if not config.reevaluate:
         # try to read the result from the git notes
         # if the result is found, directly return the result without evaluating
@@ -117,6 +117,7 @@ def evaluate(config: GAEAConfig, commit: str, cmd: list[str]) -> dict[str, str]:
         if note is not None:
             return json.loads(note)
 
+    cmd = config.eval_command
     if config.enable_sandbox:
         # run the command in a bubblewrap sandbox
         cmd = [Path(__file__).parent / "bubblewrap_run.sh"] + cmd
@@ -125,7 +126,7 @@ def evaluate(config: GAEAConfig, commit: str, cmd: list[str]) -> dict[str, str]:
         completed_proc = subprocess.run(
             cmd,
             capture_output=True,
-            cwd=config.git_dir,
+            cwd=os.path.join(config.git_dir, worktree),
             timeout=config.timeout,
         )
         stdout = completed_proc.stdout.decode("utf-8")
@@ -141,12 +142,20 @@ def evaluate(config: GAEAConfig, commit: str, cmd: list[str]) -> dict[str, str]:
             "stderr": "",
             "timeout": True,
         }
+    finally:
+        git.remove_temp_worktree(config, worktree)
 
-    note = json.dumps(result)
-    git.add_note(config, note, overwrite=True)
     logger.info(f"Evaluated {commit}\n")
     logger.info(f"Result: {note}\n")
     return result
+
+
+def update_notes(
+    config: GAEAConfig, commits: list[str], evaluate_results: list[str]
+) -> None:
+    for commit, result in zip(commits, evaluate_results):
+        note = json.dumps(result)
+        git.add_note(config, commit, note, overwrite=True)
 
 
 def git_crossover(config: GAEAConfig, seed: int, commit1: str, commit2: str) -> str:

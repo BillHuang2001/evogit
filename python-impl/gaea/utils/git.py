@@ -5,6 +5,7 @@ The utility functions for git operations.
 import subprocess
 import os
 import shutil
+import tempfile
 import uuid
 from gaea.config import GAEAConfig
 from typing import Optional
@@ -56,11 +57,12 @@ def delete_remote_branches(config: GAEAConfig) -> None:
         branch_name = remote_branch.split("/")[-1]
         branch_names.append(branch_name)
 
-    subprocess.run(
-        ["git", "push", "-q", "-d", "origin"] + branch_names,
-        cwd=config.git_dir,
-        check=True,
-    )
+    if branch_names:
+        subprocess.run(
+            ["git", "push", "-q", "-d", "origin"] + branch_names,
+            cwd=config.git_dir,
+            check=True,
+        )
 
 
 def init_git_repo(config: GAEAConfig) -> None:
@@ -199,19 +201,22 @@ def list_tags(config: GAEAConfig) -> list[str]:
 
 def delete_tags(config: GAEAConfig, tags: list[str]) -> None:
     """Delete the specified tags."""
-    subprocess.run(
-        ["git", "tag", "-d"] + tags,
-        cwd=config.git_dir,
-        check=True,
-    )
+    if tags:
+        subprocess.run(
+            ["git", "tag", "-d"] + tags,
+            cwd=config.git_dir,
+            check=True,
+        )
 
 
-def add_note(config: GAEAConfig, note: str, overwrite: bool = False) -> None:
+def add_note(config: GAEAConfig, commit: str, note: str, overwrite: bool = False) -> None:
     """Add a note to the current commit. If overwrite is True, force overwrite the existing note."""
 
     cmd = ["git", "notes", "add", "-m", note]
     if overwrite:
         cmd.append("-f")
+
+    cmd.append(commit)
 
     subprocess.run(cmd, cwd=config.git_dir, check=True)
 
@@ -297,6 +302,35 @@ def checkout(config: GAEAConfig, commit: str) -> None:
     # -q is quiet, --detach is used to checkout the commit in detached HEAD mode
     subprocess.run(
         ["git", "checkout", "-q", "--detach", commit], cwd=config.git_dir, check=True
+    )
+
+
+def add_temp_worktree(config: GAEAConfig, branch: str) -> str:
+    """checkout the branch in a new worktree and return the path of the worktree."""
+    # make a temporary directory if not exists
+    worktree_dir = os.path.join(config.git_dir, ".gaea_evaluate")
+    if not os.path.exists(worktree_dir):
+        # in case we have multiple instances running at the same time
+        try:
+            os.mkdir(worktree_dir)
+        except FileExistsError:
+            pass
+
+    worktree = tempfile.mkdtemp(prefix=f"{branch}_", dir=worktree_dir)
+    subprocess.run(
+        ["git", "worktree", "add", "--detach", "-q", worktree, branch],
+        cwd=config.git_dir,
+        check=True,
+    )
+    return worktree
+
+
+def remove_temp_worktree(config: GAEAConfig, worktree: str) -> None:
+    """Remove the worktree of the branch."""
+    subprocess.run(
+        ["git", "worktree", "remove", "-f", worktree],
+        cwd=config.git_dir,
+        check=True,
     )
 
 
