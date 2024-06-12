@@ -113,6 +113,16 @@ class TGIBackend:
         if num_workers > 1:
             self.pool = ThreadPoolExecutor(max_workers=num_workers)
 
+        if "temperature" in kwargs:
+            self.temperature = float(kwargs["temperature"])
+        else:
+            self.temperature = 1
+
+        if "top_p" in kwargs:
+            self.top_p = float(kwargs["top_p"])
+        else:
+            self.top_p = 0.99
+
     def _one_restful_request(self, args):
         seed, query = args
         headers = {
@@ -130,6 +140,8 @@ class TGIBackend:
             "model": "",
             "seed": seed,
             "max_tokens": 2048,
+            "temperature": self.temperature,
+            "top_p": self.top_p,
         }
         response = httpx.post(
             self.url, headers=headers, json=data, **self.http_req_params
