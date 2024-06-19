@@ -78,7 +78,7 @@ def gaea_git_crossover(config, seeds, parents):
     for seed, commit1, commit2 in zip(seeds, parents[0], parents[1]):
         commit1 = array_to_hex(commit1)
         commit2 = array_to_hex(commit2)
-        new_commit = api.git_crossover(config, seed, commit1, commit2)
+        new_commit = api.git_crossover(config, seed.item(), commit1, commit2)
         offspring.append(hex_to_array(new_commit))
 
     return jnp.stack(offspring)
