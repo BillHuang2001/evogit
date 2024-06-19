@@ -405,15 +405,23 @@ def branches_track_commits(
         )
 
 
-def push_to_remote(config: GAEAConfig, branches: list[str]) -> None:
+def push_to_remote(config: GAEAConfig, branches: list[str], async_push: str =True) -> None:
     """Push the branch to the remote repository along side with the notes."""
     cmd = ["git", "push", "-q", "-f", "--atomic", "origin"]
     cmd += branches
-    subprocess.run(
-        cmd,
-        cwd=config.git_dir,
-        check=True,
-    )
+    if async_push:
+        # spawn the push process and return immediately
+        # don't wait for the push to finish
+        subprocess.Popen(
+            cmd,
+            cwd=config.git_dir,
+        )
+    else:
+        subprocess.run(
+            cmd,
+            cwd=config.git_dir,
+            check=True,
+        )
 
 
 def fetch_from_remote(config: GAEAConfig, prune=True) -> None:
