@@ -107,6 +107,7 @@ class TGIBackend:
         self.http_req_params = http_req_params
         self.logger = logging.getLogger("gaea")
         self.num_workers = num_workers
+        self.num_retry = 5
         if num_workers > 1:
             self.pool = ThreadPoolExecutor(max_workers=num_workers)
 
@@ -140,10 +141,19 @@ class TGIBackend:
             "temperature": self.temperature,
             "top_p": self.top_p,
         }
-        response = httpx.post(
-            self.url, headers=headers, json=data, **self.http_req_params
-        )
-        return response.json()["choices"][0]["message"]["content"]
+        for _ in range(self.num_retry):
+            try:
+                response = httpx.post(
+                    self.url, headers=headers, json=data, **self.http_req_params
+                )
+                return response.json()["choices"][0]["message"]["content"]
+            except Exception as e:
+                import traceback
+
+                self.logger.warning(traceback.format_exc())
+                pass
+        self.logger.error(f"Failed to query TGI for {self.num_retry} times. Abort!")
+        raise Exception("Failed to query TGI")
 
     def query(self, seeds, queries):
         self.logger.info("Querying LLM model...")
@@ -180,6 +190,7 @@ class HuggingfaceModel:
         import torch
         import transformers
         from transformers import AutoModelForCausalLM, AutoTokenizer, Conversation
+
         self.logger = logging.getLogger("gaea")
 
         self.tokenizer = AutoTokenizer.from_pretrained(
@@ -201,6 +212,7 @@ class HuggingfaceModel:
 
     def query(self, seeds, queries):
         import torch
+
         # torch doesn't support setting a batch of seeds for a batch of queries
         # so we combine them into a single seed by XORing them
         seed = reduce(lambda x, y: x ^ y, seeds)
