@@ -8,9 +8,6 @@ import time
 from functools import reduce
 
 import httpx
-import torch
-import transformers
-from transformers import AutoModelForCausalLM, AutoTokenizer, Conversation
 
 
 class GeminiBackend:
@@ -180,6 +177,9 @@ class HuggingfaceModel:
         num_workers=1,
         **kwargs,
     ):
+        import torch
+        import transformers
+        from transformers import AutoModelForCausalLM, AutoTokenizer, Conversation
         self.logger = logging.getLogger("gaea")
 
         self.tokenizer = AutoTokenizer.from_pretrained(
@@ -200,6 +200,7 @@ class HuggingfaceModel:
         )
 
     def query(self, seeds, queries):
+        import torch
         # torch doesn't support setting a batch of seeds for a batch of queries
         # so we combine them into a single seed by XORing them
         seed = reduce(lambda x, y: x ^ y, seeds)
