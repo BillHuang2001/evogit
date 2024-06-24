@@ -175,8 +175,13 @@ def evaluate(config, pool, pop):
     pop = [array_to_hex(individual) for individual in pop]
     logger = logging.getLogger("gaea")
     logger.info(pop)
-    output = list(pool.map(partial(api.evaluate, config), pop))
+
+    # 1. prepare worktrees  2. evaluate  3. update notes  4. cleanup worktrees
+    worktrees = api.prepare_temp_worktrees(config, pop)
+    output = list(pool.map(partial(api.evaluate, config), pop, worktrees))
     api.update_notes(config, pop, output)
+    api.cleanup_temp_worktrees(config)
+
     if config.num_objectives == 1:
         illegal_value = jnp.inf
     else:

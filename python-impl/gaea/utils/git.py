@@ -209,7 +209,9 @@ def delete_tags(config: GAEAConfig, tags: list[str]) -> None:
         )
 
 
-def add_note(config: GAEAConfig, commit: str, note: str, overwrite: bool = False) -> None:
+def add_note(
+    config: GAEAConfig, commit: str, note: str, overwrite: bool = False
+) -> None:
     """Add a note to the current commit. If overwrite is True, force overwrite the existing note."""
 
     cmd = ["git", "notes", "add", "-m", note]
@@ -334,6 +336,19 @@ def remove_temp_worktree(config: GAEAConfig, worktree: str) -> None:
     )
 
 
+def cleanup_temp_worktrees(config: GAEAConfig) -> None:
+    """Remove all the worktrees in the .gaea_evaluate directory."""
+    worktree_dir = os.path.join(config.git_dir, ".gaea_evaluate")
+    if os.path.exists(worktree_dir):
+        shutil.rmtree(worktree_dir)
+
+    subprocess.run(
+        ["git", "worktree", "prune"],
+        cwd=config.git_dir,
+        check=True,
+    )
+
+
 def merge_branches(config: GAEAConfig, commit: str) -> None:
     """merge the commit specified by the commit_id to the current branch."""
     # don't check the return code because the merge may fail
@@ -348,7 +363,7 @@ def rebase_branches(config: GAEAConfig, commit: str) -> None:
     subprocess.run(
         ["git", "rebase", "-q", commit],
         cwd=config.git_dir,
-        env={"GIT_EDITOR": "true"},
+        env=os.environb | {"GIT_EDITOR": "true"},
     )
 
 
@@ -357,7 +372,7 @@ def continue_merge(config: GAEAConfig) -> None:
     subprocess.run(
         ["git", "merge", "--continue"],
         cwd=config.git_dir,
-        env={"GIT_EDITOR": "true"},
+        env=os.environb | {"GIT_EDITOR": "true"},
         check=True,
     )
 
@@ -367,7 +382,9 @@ def continue_rebase(config: GAEAConfig) -> None:
     # GIT_EDITOR=true is used to disable the interactive editor
     # and accept the default commit message
     subprocess.run(
-        ["git", "rebase", "--continue"], cwd=config.git_dir, env={"GIT_EDITOR": "true"}
+        ["git", "rebase", "--continue"],
+        cwd=config.git_dir,
+        env=os.environb | {"GIT_EDITOR": "true"},
     )
 
 
@@ -405,7 +422,9 @@ def branches_track_commits(
         )
 
 
-def push_to_remote(config: GAEAConfig, branches: list[str], async_push: str =True) -> None:
+def push_to_remote(
+    config: GAEAConfig, branches: list[str], async_push: str = True
+) -> None:
     """Push the branch to the remote repository along side with the notes."""
     cmd = ["git", "push", "-q", "-f", "--atomic", "origin"]
     cmd += branches

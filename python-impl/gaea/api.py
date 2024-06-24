@@ -87,7 +87,16 @@ def fetch_remote_branches(config: GAEAConfig) -> None:
     git.fetch_from_remote(config)
 
 
-def evaluate(config: GAEAConfig, commit: str) -> dict[str, str]:
+def prepare_temp_worktrees(config: GAEAConfig, commits: list[str]) -> None:
+    worktrees = [git.add_temp_worktree(config, commit) for commit in commits]
+    return worktrees
+
+
+def cleanup_temp_worktrees(config: GAEAConfig) -> str:
+    git.cleanup_temp_worktrees(config)
+
+
+def evaluate(config: GAEAConfig, commit: str, worktree) -> dict[str, str]:
     """Evaluate the the result of the individual. This function can be run in parallel.
 
     Parameters
@@ -108,7 +117,6 @@ def evaluate(config: GAEAConfig, commit: str) -> dict[str, str]:
             "timeout": bool
         }
     """
-    worktree = git.add_temp_worktree(config, commit)
     if not config.reevaluate:
         # try to read the result from the git notes
         # if the result is found, directly return the result without evaluating
@@ -142,8 +150,6 @@ def evaluate(config: GAEAConfig, commit: str) -> dict[str, str]:
             "stderr": "",
             "timeout": True,
         }
-    finally:
-        git.remove_temp_worktree(config, worktree)
 
     logger.info(f"Evaluated {commit}\n")
     logger.info(f"Result: {note}\n")
