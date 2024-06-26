@@ -108,6 +108,7 @@ class TGIBackend:
         self.logger = logging.getLogger("gaea")
         self.num_workers = num_workers
         self.num_retry = 5
+        self.usage_history = []
         if num_workers > 1:
             self.pool = ThreadPoolExecutor(max_workers=num_workers)
 
@@ -137,7 +138,7 @@ class TGIBackend:
             "stream": False,
             "model": "",
             "seed": seed,
-            "max_tokens": 2048,
+            "max_tokens": 1536,
             "temperature": self.temperature,
             "top_p": self.top_p,
         }
@@ -146,12 +147,23 @@ class TGIBackend:
                 response = httpx.post(
                     self.url, headers=headers, json=data, **self.http_req_params
                 )
-                return response.json()["choices"][0]["message"]["content"]
+                json_response = response.json()
             except Exception as e:
                 import traceback
 
-                self.logger.warning(traceback.format_exc())
-                pass
+                self.logger.error(traceback.format_exc())
+                # network error, sleep and retry
+                time.sleep(10)
+
+            try:
+                content = json_response["choices"][0]["message"]["content"]
+                usage = json_response["usage"]
+                return content, usage
+            except Exception as e:
+                self.logger.error(f"Failed to parse response: {json_response}")
+                self.logger.error(f"{response.text}")
+                self.logger.error(f"{response.json()}")
+
         self.logger.error(f"Failed to query TGI for {self.num_retry} times. Abort!")
         raise Exception("Failed to query TGI")
 
@@ -169,11 +181,14 @@ class TGIBackend:
             for seed, query in zip(seeds, queries):
                 responses.append(self._one_restful_request((seed, query)))
 
-        self.logger.info("LLM model responses:")
-        for response in responses:
-            self.logger.info(response + "\n")
+        contents, usages = zip(*responses)
+        self.usage_history.append(usages)
 
-        return responses
+        self.logger.info("LLM model responses:")
+        for content in contents:
+            self.logger.info(content + "\n")
+
+        return contents
 
 
 class HuggingfaceModel:
