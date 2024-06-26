@@ -46,6 +46,7 @@ class BranchMonitor(Monitor):
         def update_branches(pop):
             pop = [array_to_hex(individual) for individual in pop]
             api.update_branches(config, pop)
+            api.prune_commits(self.config)
 
         self.update_branches = update_branches
 
@@ -63,8 +64,6 @@ class BranchMonitor(Monitor):
             api.fetch_remote_branches(self.config)
         if self.generation % self.config.push_every == 0:
             api.push_local_branches(self.config)
-
-        api.prune_commits(self.config)
 
         self.generation += 1
 

@@ -49,9 +49,8 @@ def delete_remote_branches(config: GAEAConfig) -> None:
     fetch_from_remote(config)
     remote_branches = list_branches(config, list_remote=True)
     print(f"Delete the following remote branches: {remote_branches}")
+
     # delete all remote branches
-    # delete branch cannot be done in parallel
-    # thus run it sequentially
     branch_names = []
     for remote_branch in remote_branches:
         branch_name = remote_branch.split("/")[-1]
