@@ -64,6 +64,8 @@ class BranchMonitor(Monitor):
         if self.generation % self.config.push_every == 0:
             api.push_local_branches(self.config)
 
+        api.prune_commits(self.config)
+
         self.generation += 1
 
     def get_population_history(self):

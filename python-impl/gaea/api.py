@@ -317,3 +317,8 @@ def migrate_from_other_hosts(config: GAEAConfig, migration_count: int) -> list[s
     branches = branches[:migration_count]
     commits = [git.get_commit_by_branch(config, branch) for branch in branches]
     return commits
+
+
+def prune_commits(config: GAEAConfig) -> None:
+    """Prune the commits that are reachable."""
+    git.prune(config)

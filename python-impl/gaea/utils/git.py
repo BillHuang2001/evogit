@@ -456,3 +456,12 @@ def fetch_from_remote(config: GAEAConfig, prune=True) -> None:
         cwd=config.git_dir,
         check=True,
     )
+
+
+def prune(config: GAEAConfig) -> None:
+    """Run git prune."""
+    subprocess.run(
+        ["git", "prune"],
+        cwd=config.git_dir,
+        check=True,
+    )
