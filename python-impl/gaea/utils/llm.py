@@ -90,8 +90,8 @@ class TGIBackend:
         self,
         url: str = "http://127.0.0.1:8080/v1/chat/completions",
         http_req_params: dict = {},
-        num_workers=32,
-        **kwargs,
+        num_workers=16,
+        extra_args={},
     ) -> None:
         """
         Parameters
@@ -107,20 +107,11 @@ class TGIBackend:
         self.http_req_params = http_req_params
         self.logger = logging.getLogger("gaea")
         self.num_workers = num_workers
-        self.num_retry = 5
+        self.num_retry = 100000
         self.usage_history = []
         if num_workers > 1:
             self.pool = ThreadPoolExecutor(max_workers=num_workers)
-
-        if "temperature" in kwargs:
-            self.temperature = float(kwargs["temperature"])
-        else:
-            self.temperature = 1
-
-        if "top_p" in kwargs:
-            self.top_p = float(kwargs["top_p"])
-        else:
-            self.top_p = 0.99
+        self.extra_args = extra_args
 
     def _one_restful_request(self, args):
         seed, query = args
@@ -138,28 +129,29 @@ class TGIBackend:
             "stream": False,
             "model": "",
             "seed": seed,
-            "max_tokens": 1536,
-            "temperature": self.temperature,
-            "top_p": self.top_p,
+            "max_tokens": 16384,
         }
-        for _ in range(self.num_retry):
+        data = data | self.extra_args
+        for retry in range(self.num_retry):
             try:
                 response = httpx.post(
                     self.url, headers=headers, json=data, **self.http_req_params
                 )
                 json_response = response.json()
-            except Exception as e:
+            except Exception:
                 import traceback
 
+                self.logger.error(f"Failed to query TGI. Sleep. Retry {retry + 1}...")
                 self.logger.error(traceback.format_exc())
                 # network error, sleep and retry
-                time.sleep(10)
+                time.sleep(30)
+                continue
 
             try:
                 content = json_response["choices"][0]["message"]["content"]
                 usage = json_response["usage"]
                 return content, usage
-            except Exception as e:
+            except Exception:
                 self.logger.error(f"Failed to parse response: {json_response}")
                 self.logger.error(f"{response.text}")
                 self.logger.error(f"{response.json()}")
