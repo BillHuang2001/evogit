@@ -212,14 +212,15 @@ def add_note(
     config: GAEAConfig, commit: str, note: str, overwrite: bool = False
 ) -> None:
     """Add a note to the current commit. If overwrite is True, force overwrite the existing note."""
-
-    cmd = ["git", "notes", "add", "-m", note]
+    # the note is passed through stdin, so we use `-F -` to let git read from stdin
+    # otherwise, if we use `-m`, and the note is too long, it will result in an error
+    cmd = ["git", "notes", "add", "-F", "-"]
     if overwrite:
         cmd.append("-f")
 
     cmd.append(commit)
 
-    subprocess.run(cmd, cwd=config.git_dir, check=True)
+    subprocess.run(cmd, cwd=config.git_dir, input=note.encode("utf-8"), check=True)
 
 
 def read_note(config: GAEAConfig, commit: Optional[str]) -> Optional[str]:
@@ -259,6 +260,9 @@ def update_file(
         f.truncate()
 
     subprocess.run(["git", "add", config.filename], cwd=config.git_dir, check=True)
+    # sometimes the LLM can output null characters, which will cause git commit to fail
+    # makt sure it has less than 256 characters and only contain alphanumeric characters
+    commit_message = re.sub(r"[^a-zA-Z0-9_]", "", commit_message[:256])
     subprocess.run(
         ["git", "commit", "-q", "-m", commit_message], cwd=config.git_dir, check=True
     )
@@ -302,7 +306,11 @@ def checkout(config: GAEAConfig, commit: str) -> None:
     """Checkout the specified commit."""
     # -q is quiet, --detach is used to checkout the commit in detached HEAD mode
     subprocess.run(
-        ["git", "checkout", "-q", "--detach", commit], cwd=config.git_dir, check=True
+        ["git", "checkout", "-q", "--detach", commit],
+        cwd=config.git_dir,
+        check=True,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
     )
 
 
@@ -322,6 +330,8 @@ def add_temp_worktree(config: GAEAConfig, branch: str) -> str:
         ["git", "worktree", "add", "--detach", "-q", worktree, branch],
         cwd=config.git_dir,
         check=True,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
     )
     return worktree
 
@@ -351,7 +361,12 @@ def cleanup_temp_worktrees(config: GAEAConfig) -> None:
 def merge_branches(config: GAEAConfig, commit: str) -> None:
     """merge the commit specified by the commit_id to the current branch."""
     # don't check the return code because the merge may fail
-    subprocess.run(["git", "merge", "-q", commit, "--no-edit"], cwd=config.git_dir)
+    subprocess.run(
+        ["git", "merge", "-q", commit, "--no-edit"],
+        cwd=config.git_dir,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
 
 
 def rebase_branches(config: GAEAConfig, commit: str) -> None:
@@ -363,6 +378,8 @@ def rebase_branches(config: GAEAConfig, commit: str) -> None:
         ["git", "rebase", "-q", commit],
         cwd=config.git_dir,
         env=os.environb | {"GIT_EDITOR": "true"},
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
     )
 
 
@@ -373,6 +390,8 @@ def continue_merge(config: GAEAConfig) -> None:
         cwd=config.git_dir,
         env=os.environb | {"GIT_EDITOR": "true"},
         check=True,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
     )
 
 
@@ -384,6 +403,8 @@ def continue_rebase(config: GAEAConfig) -> None:
         ["git", "rebase", "--continue"],
         cwd=config.git_dir,
         env=os.environb | {"GIT_EDITOR": "true"},
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
     )
 
 
@@ -417,7 +438,11 @@ def branches_track_commits(
     """Create branches that track the specified commits."""
     for branch_name, commit in zip(branch_names, commits):
         subprocess.run(
-            ["git", "branch", "-f", branch_name, commit], cwd=config.git_dir, check=True
+            ["git", "branch", "-f", branch_name, commit],
+            cwd=config.git_dir,
+            check=True,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
         )
 
 
@@ -433,16 +458,20 @@ def push_to_remote(
         subprocess.Popen(
             cmd,
             cwd=config.git_dir,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
         )
     else:
         subprocess.run(
             cmd,
             cwd=config.git_dir,
             check=True,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
         )
 
 
-def fetch_from_remote(config: GAEAConfig, prune=True) -> None:
+def fetch_from_remote(config: GAEAConfig, prune=True, async_fetch: str = True) -> None:
     """Fetch the notes from the remote repository."""
     cmd = ["git", "fetch", "-q"]
     if prune:
@@ -450,11 +479,21 @@ def fetch_from_remote(config: GAEAConfig, prune=True) -> None:
 
     cmd.append("origin")
 
-    subprocess.run(
-        cmd,
-        cwd=config.git_dir,
-        check=True,
-    )
+    if async_fetch:
+        subprocess.Popen(
+            cmd,
+            cwd=config.git_dir,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+    else:
+        subprocess.run(
+            cmd,
+            cwd=config.git_dir,
+            check=True,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
 
 
 def prune(config: GAEAConfig) -> None:
@@ -462,5 +501,13 @@ def prune(config: GAEAConfig) -> None:
     subprocess.run(
         ["git", "prune"],
         cwd=config.git_dir,
-        check=True,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
     )
+
+    gc_log = os.path.join(config.git_dir, ".git", "gc.log")
+    if os.path.exists(gc_log):
+        try:
+            os.remove(gc_log)
+        except FileNotFoundError:
+            pass
