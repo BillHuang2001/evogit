@@ -189,20 +189,7 @@ def evaluate(config, pool, pop):
         illegal_value = [jnp.inf for _ in range(config.num_objectives)]
     fitness = []
     for o in output:
-        if o["timeout"] == True:
-            fit = illegal_value
-        else:
-            try:
-                stdout = json.loads(o["stdout"])
-                if stdout["status"] == "finished":
-                    fit = stdout["fitness"]
-                else:
-                    fit = illegal_value
-            except json.JSONDecodeError:
-                fit = illegal_value
-            except Exception as e:
-                logger.error(f"Unknown error occurred: {e}")
-                fit = illegal_value
+        fit = api.decode_result(o, illegal_value)
         fitness.append(fit)
     return jnp.array(fitness).astype(jnp.float32)
 
@@ -248,6 +235,7 @@ class MigrateHelper:
         return_type = (
             jax.ShapeDtypeStruct((), jnp.bool_),
             jax.ShapeDtypeStruct((1, byte_length), jnp.uint8),
+            jax.ShapeDtypeStruct((), jnp.float32),
         )
         return io_callback(self._migrate_from_human, return_type)
 
@@ -256,16 +244,17 @@ class MigrateHelper:
         return_type = (
             jax.ShapeDtypeStruct((), jnp.bool_),
             jax.ShapeDtypeStruct((self.config.migrate_count, byte_length), jnp.uint8),
+            jax.ShapeDtypeStruct((self.config.migrate_count,), jnp.float32),
         )
         return io_callback(self._migrate_from_other_hosts, return_type)
 
     def _migrate_from_human(self):
         if self.generation % self.config.human_every == 0:
-            commit = api.migrate_from_human_tags(self.config, 1)
+            commit, fitness = api.migrate_from_human_tags(self.config, 1)
 
             if commit:
                 self.logger.info(f"Found commit by human: {commit}")
-                return True, jnp.array([hex_to_array(commit[0])])
+                return True, jnp.array([hex_to_array(commit[0])]), fitness
 
         return False, jnp.empty(
             (1, HASH_BYTE_LENGTH[self.config.git_hash]), dtype=jnp.uint8
@@ -273,15 +262,23 @@ class MigrateHelper:
 
     def _migrate_from_other_hosts(self):
         if self.generation % self.config.migrate_every == 0:
-            commits = api.migrate_from_other_hosts(
+            commits, fitness = api.migrate_from_other_hosts(
                 self.config, self.config.migrate_count
             )
 
             if len(commits) == self.config.migrate_count:
                 self.logger.info(f"Migrating commits from other hosts: {commits}")
-                return True, jnp.stack([hex_to_array(commit) for commit in commits])
+                return (
+                    True,
+                    jnp.stack([hex_to_array(commit) for commit in commits]),
+                    fitness,
+                )
 
-        return False, jnp.empty(
-            (self.config.migrate_count, HASH_BYTE_LENGTH[self.config.git_hash]),
-            dtype=jnp.uint8,
+        return (
+            False,
+            jnp.empty(
+                (self.config.migrate_count, HASH_BYTE_LENGTH[self.config.git_hash]),
+                dtype=jnp.uint8,
+            ),
+            jnp.empty((self.config.migrate_count,)),
         )
