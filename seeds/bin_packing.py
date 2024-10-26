@@ -11,4 +11,4 @@ def bin_packing(items: list[float]) -> list[int]:
 
     The packing plan above means that the first and third items are packed into the first bin, and the second and fourth items are packed into the second bin.
     """
-    pass
+    return list(range(len(items)))

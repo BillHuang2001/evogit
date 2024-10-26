@@ -3,27 +3,40 @@ import sys
 import time
 import traceback
 import random
+import os, sys
+
+
+class HiddenPrints:
+    def __enter__(self):
+        self._original_stdout = sys.stdout
+        sys.stdout = open(os.devnull, "w")
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        sys.stdout.close()
+        sys.stdout = self._original_stdout
 
 
 NUM_TEST_CASES = 100
-NUM_MAX_BINS = 1000
+NUM_MIN_BINS = 5000
+NUM_MAX_BINS = 10000
+
 
 def valid_plan(data, plan):
     if plan is None or not isinstance(plan, list):
-        return False
-    
+        raise ValueError(f"Plan must be a list, got {type(plan)}")
+
     if len(plan) != len(data):
-        return False
+        raise ValueError(f"Plan length must be equal to data length")
 
     if min(plan) != 0:
-        return False
+        raise ValueError(f"Bin index must start from 0")
 
     bins = [[] for _ in range(max(plan) + 1)]
     for item, bin_id in zip(data, plan):
         bins[bin_id].append(item)
-    for bin_ in bins:
+    for i, bin_ in enumerate(bins):
         if sum(bin_) > 1:
-            return False
+            raise ValueError(f"Bin {i} has sum > 1")
     return True
 
 
@@ -32,30 +45,41 @@ if __name__ == "__main__":
         # add the cwd to PYTHONPATH
         # and try to import the algorithm
         sys.path.append("./")
-        from algorithm import bin_packing
+        with HiddenPrints():
+            from algorithm import bin_packing
 
         # set the random seed
         random.seed(42)
         fitness = []
-        for _ in range(NUM_TEST_CASES):
-            num_bins = random.randint(2, NUM_MAX_BINS)
-            data = [random.random() for _ in range(num_bins)]
-            plan = bin_packing(data)
-            if not valid_plan(data, plan):
-                raise ValueError("Invalid plan")
-            else:
+        with HiddenPrints():
+            for _ in range(NUM_TEST_CASES):
+                num_bins = random.randint(NUM_MIN_BINS, NUM_MAX_BINS)
+                num_bins = 100_000
+                data = [random.random() for _ in range(num_bins)]
+                plan = bin_packing(data)
+                valid_plan(data, plan)
                 fitness.append(max(plan) + 1)
 
         result = {
             "status": "finished",
             "stack_trace": "",
-            "fitness": fitness,
+            "fitness": sum(fitness),
         }
     except Exception as e:
+        filtered_tb = []
+        for frame in traceback.extract_tb(e.__traceback__):
+            if (
+                "algorithm.py" in frame.filename
+                or "bin_packing_main.py" in frame.filename
+            ):
+                filtered_tb.append(frame)
+        exception_msg = traceback.format_exception_only(type(e), e)
+        filtered_tb = traceback.format_list(filtered_tb) + exception_msg
         result = {
             "status": "error",
-            "stack_trace": traceback.format_exc(),
-            "fitness": fitness,
+            "stack_trace": "".join(filtered_tb),
+            "fitness": None,
+            "time_cost": None,
         }
     finally:
         print(json.dumps(result))
