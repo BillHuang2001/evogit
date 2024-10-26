@@ -156,6 +156,25 @@ def evaluate(config: GAEAConfig, commit: str, worktree) -> dict[str, str]:
     return result
 
 
+def decode_result(output, illegal_value) -> Any:
+    if output["timeout"] == True:
+        fit = illegal_value
+    else:
+        try:
+            stdout = json.loads(output["stdout"])
+            if stdout["status"] == "finished":
+                fit = stdout["fitness"]
+            else:
+                fit = illegal_value
+        except json.JSONDecodeError:
+            fit = illegal_value
+        except Exception as e:
+            logger.error(f"Unknown error occurred: {e}")
+            fit = illegal_value
+
+    return fit
+
+
 def update_notes(
     config: GAEAConfig, commits: list[str], evaluate_results: list[str]
 ) -> None:
@@ -254,6 +273,9 @@ def _construct_prompt(config, commits, chunk_size, operation_type) -> str:
                         f"Failed to parse the stack trace of {commit} with note: {note}"
                     )
                     stack_trace = None
+                    import traceback
+
+                    traceback.print_exc()
 
         code_infos.append(CodeInfo(code, stack_trace, timeout))
 
@@ -316,7 +338,10 @@ def migrate_from_other_hosts(config: GAEAConfig, migration_count: int) -> list[s
     random.shuffle(branches)
     branches = branches[:migration_count]
     commits = [git.get_commit_by_branch(config, branch) for branch in branches]
-    return commits
+    notes = [git.read_note(config, commit) for commit in commits]
+    fitness = [decode_result(json.loads(note), np.inf) for note in notes]
+    fitness = np.array(fitness).astype(np.float32)
+    return commits, fitness
 
 
 def prune_commits(config: GAEAConfig) -> None:

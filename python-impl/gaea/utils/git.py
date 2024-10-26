@@ -471,6 +471,28 @@ def push_to_remote(
         )
 
 
+def push_notes_to_remote(config: GAEAConfig, async_push: str = True) -> None:
+    """Push the notes to the remote repository."""
+    cmd = ["git", "push", "-q", "origin", "refs/notes/commits"]
+    if async_push:
+        # spawn the push process and return immediately
+        # don't wait for the push to finish
+        subprocess.Popen(
+            cmd,
+            cwd=config.git_dir,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+    else:
+        subprocess.run(
+            cmd,
+            cwd=config.git_dir,
+            check=True,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+
+
 def fetch_from_remote(config: GAEAConfig, prune=True, async_fetch: str = True) -> None:
     """Fetch the notes from the remote repository."""
     cmd = ["git", "fetch", "-q"]
@@ -496,13 +518,51 @@ def fetch_from_remote(config: GAEAConfig, prune=True, async_fetch: str = True) -
         )
 
 
+def merge_notes(config: GAEAConfig) -> None:
+    """Merge the notes from the remote repository."""
+    subprocess.run(
+        ["git", "notes", "merge", "-s", "ours", "refs/notes/commits"],
+        cwd=config.git_dir,
+        check=True,
+    )
+
+
+def fetch_notes_from_remote(config: GAEAConfig, async_fetch: str = True) -> None:
+    """Fetch the notes from the remote repository."""
+    cmd = ["git", "fetch", "-q", "origin", "refs/notes/commits:refs/notes/commits"]
+
+    if async_fetch:
+        subprocess.Popen(
+            cmd,
+            cwd=config.git_dir,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+    else:
+        subprocess.run(
+            cmd,
+            cwd=config.git_dir,
+            check=True,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+
+    merge_notes(config)
+
+
 def prune(config: GAEAConfig) -> None:
     """Run git prune."""
     subprocess.run(
         ["git", "prune"],
         cwd=config.git_dir,
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
+        # stdout=subprocess.DEVNULL,
+        # stderr=subprocess.DEVNULL,
+    )
+    subprocess.run(
+        ["git", "gc"],
+        cwd=config.git_dir,
+        # stdout=subprocess.DEVNULL,
+        # stderr=subprocess.DEVNULL,
     )
 
     gc_log = os.path.join(config.git_dir, ".git", "gc.log")
