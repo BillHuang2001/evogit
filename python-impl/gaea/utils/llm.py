@@ -20,6 +20,8 @@ class GeminiBackend:
         http_req_params
             Additional HTTP request parameters.
             Common parameters include `timeout`, `proxies`, etc.
+        **kwargs
+            Additional parameters.
         """
         super().__init__()
         self.api_key = api_key
@@ -90,7 +92,7 @@ class TGIBackend:
         self,
         url: str = "http://127.0.0.1:8080/v1/chat/completions",
         http_req_params: dict = {},
-        num_workers=16,
+        num_workers=4,
         extra_args={},
     ) -> None:
         """
@@ -129,7 +131,7 @@ class TGIBackend:
             "stream": False,
             "model": "",
             "seed": seed,
-            "max_tokens": 16384,
+            "max_tokens": 10000,
         }
         data = data | self.extra_args
         for retry in range(self.num_retry):
