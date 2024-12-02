@@ -53,11 +53,15 @@ class BranchMonitor(Monitor):
     def hooks(self):
         return ["post_step"]
 
-    def post_step(self, state):
-        population = getattr(state.get_child_state("algorithm"), self.population_name)
-        io_callback(self.update_branches, None, population)
+    def clear_history(self):
+        return
+
+    def post_step(self, state, workflow_state):
+        population = getattr(workflow_state.get_child_state("algorithm"), self.population_name)
+        state.register_callback(self.update_branches, population)
         if self.sync_to_remote:
-            io_callback(self.git_update, None)
+            state.register_callback(self.git_update)
+        return state
 
     def git_update(self):
         if self.generation % self.config.fetch_every == 0:
