@@ -461,14 +461,19 @@ def branches_track_commits(
     config: GAEAConfig, branch_names: list[str], commits: list[str]
 ) -> None:
     """Create branches that track the specified commits."""
+    processes = []
     for branch_name, commit in zip(branch_names, commits):
-        subprocess.run(
+        proc = subprocess.Popen(
             ["git", "branch", "-f", branch_name, commit],
             cwd=config.git_dir,
-            check=True,
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
         )
+        processes.append(proc)
+
+    for proc in processes:
+        proc.wait()
+        assert proc.returncode == 0, "Failed to create branch that tracks the commit."
 
 
 def push_to_remote(
@@ -592,19 +597,13 @@ def prune(config: GAEAConfig) -> None:
             pass
 
     subprocess.run(
-        ["git", "prune"],
+        ["git", "gc"],
         cwd=config.git_dir,
         # stdout=subprocess.DEVNULL,
         # stderr=subprocess.DEVNULL,
     )
     subprocess.run(
         ["git", "notes", "prune"],
-        cwd=config.git_dir,
-        # stdout=subprocess.DEVNULL,
-        # stderr=subprocess.DEVNULL,
-    )
-    subprocess.run(
-        ["git", "gc"],
         cwd=config.git_dir,
         # stdout=subprocess.DEVNULL,
         # stderr=subprocess.DEVNULL,
