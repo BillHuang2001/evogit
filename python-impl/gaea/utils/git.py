@@ -64,6 +64,24 @@ def delete_remote_branches(config: GAEAConfig) -> None:
         )
 
 
+def delete_remote_notes(config: GAEAConfig) -> None:
+    remote_branches = list_branches(config, list_remote=True)
+    print(f"Delete the following remote notes: {remote_branches}")
+
+    # delete all remote notes
+    branch_names = []
+    for remote_branch in remote_branches:
+        branch_name = remote_branch.split("/")[-1]
+        branch_names.append(branch_name)
+
+    if branch_names:
+        subprocess.run(
+            ["git", "push", "-q", "origin", "-d"] + branch_names,
+            cwd=config.git_dir,
+            check=True,
+        )
+
+
 def init_git_repo(config: GAEAConfig) -> None:
     git_dir = config.git_dir
 
@@ -79,6 +97,8 @@ def init_git_repo(config: GAEAConfig) -> None:
     shutil.copy(config.seed_file, os.path.join(git_dir, config.filename))
     subprocess.run(["git", "add", "."], cwd=git_dir, check=True)
     subprocess.run(["git", "commit", "-q", "-m", "init"], cwd=git_dir, check=True)
+    # disable auto gc, since we will run it manually at the end of each evaluation
+    subprocess.run(["git", "config", "gc.auto", "0"], cwd=git_dir, check=True)
 
     if config.remote_repo is not None:
         subprocess.run(
@@ -88,6 +108,11 @@ def init_git_repo(config: GAEAConfig) -> None:
         )
         subprocess.run(
             ["git", "push", "-f", "origin", "master"], cwd=git_dir, check=True
+        )
+        subprocess.run(
+            ["git", "push", "-d", "origin", "ref/notes/commits"],
+            cwd=git_dir,
+            check=True,
         )
 
         delete_remote_branches(config)
@@ -473,7 +498,14 @@ def push_to_remote(
 
 def push_notes_to_remote(config: GAEAConfig, async_push: str = True) -> None:
     """Push the notes to the remote repository."""
-    cmd = ["git", "push", "-q", "origin", "refs/notes/commits"]
+    remote_notes_namespace = f"refs/notes/{config.hostname}-commits"
+    cmd = [
+        "git",
+        "push",
+        "-q",
+        "origin",
+        f"refs/notes/commits:refs/notes/{remote_notes_namespace}",
+    ]
     if async_push:
         # spawn the push process and return immediately
         # don't wait for the push to finish
@@ -529,7 +561,7 @@ def merge_notes(config: GAEAConfig) -> None:
 
 def fetch_notes_from_remote(config: GAEAConfig, async_fetch: str = True) -> None:
     """Fetch the notes from the remote repository."""
-    cmd = ["git", "fetch", "-q", "origin", "refs/notes/commits:refs/notes/commits"]
+    cmd = ["git", "fetch", "-q", "origin", "refs/notes/*:refs/notes/*"]
 
     if async_fetch:
         subprocess.Popen(
@@ -552,8 +584,21 @@ def fetch_notes_from_remote(config: GAEAConfig, async_fetch: str = True) -> None
 
 def prune(config: GAEAConfig) -> None:
     """Run git prune."""
+    gc_log = os.path.join(config.git_dir, ".git", "gc.log")
+    if os.path.exists(gc_log):
+        try:
+            os.remove(gc_log)
+        except FileNotFoundError:
+            pass
+
     subprocess.run(
         ["git", "prune"],
+        cwd=config.git_dir,
+        # stdout=subprocess.DEVNULL,
+        # stderr=subprocess.DEVNULL,
+    )
+    subprocess.run(
+        ["git", "notes", "prune"],
         cwd=config.git_dir,
         # stdout=subprocess.DEVNULL,
         # stderr=subprocess.DEVNULL,
@@ -564,10 +609,3 @@ def prune(config: GAEAConfig) -> None:
         # stdout=subprocess.DEVNULL,
         # stderr=subprocess.DEVNULL,
     )
-
-    gc_log = os.path.join(config.git_dir, ".git", "gc.log")
-    if os.path.exists(gc_log):
-        try:
-            os.remove(gc_log)
-        except FileNotFoundError:
-            pass
