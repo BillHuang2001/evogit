@@ -3,7 +3,9 @@ import sys
 import time
 import traceback
 import random
-import os, sys
+import os
+import sys
+import copy
 
 
 class HiddenPrints:
@@ -56,7 +58,7 @@ if __name__ == "__main__":
                 num_bins = random.randint(NUM_MIN_BINS, NUM_MAX_BINS)
                 num_bins = 100_000
                 data = [random.random() for _ in range(num_bins)]
-                plan = bin_packing(data)
+                plan = bin_packing(copy.copy(data)) # copy data to avoid mutation
                 valid_plan(data, plan)
                 fitness.append(max(plan) + 1)
 
