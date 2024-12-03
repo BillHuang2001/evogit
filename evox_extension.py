@@ -58,9 +58,9 @@ class BranchMonitor(Monitor):
 
     def post_step(self, state, workflow_state):
         population = getattr(workflow_state.get_child_state("algorithm"), self.population_name)
-        state.register_callback(self.update_branches, population)
+        state = state.register_callback(self.update_branches, population)
         if self.sync_to_remote:
-            state.register_callback(self.git_update)
+            state = state.register_callback(self.git_update)
         return state
 
     def git_update(self):
