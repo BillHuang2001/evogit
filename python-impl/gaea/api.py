@@ -5,6 +5,7 @@ import subprocess
 from collections import namedtuple
 from pathlib import Path
 from typing import Any
+import random
 
 import numpy as np
 
@@ -80,11 +81,14 @@ def get_initial_branches(config: GAEAConfig, pop_size: int) -> list[str]:
 def push_local_branches(config: GAEAConfig) -> None:
     """Push all branches to the remote"""
     branches = git.list_branches(config)
+    git.push_notes_to_remote(config)
     git.push_to_remote(config, branches)
 
 
-def fetch_remote_branches(config: GAEAConfig) -> None:
+def fetch_remote(config: GAEAConfig) -> None:
+    """Fetch remote branches and notes"""
     git.fetch_from_remote(config)
+    git.fetch_notes_from_remote(config)
 
 
 def prepare_temp_worktrees(config: GAEAConfig, commits: list[str]) -> None:
@@ -331,12 +335,14 @@ def migrate_from_human_tags(config: GAEAConfig, migrate_count: int) -> list[str]
 def migrate_from_other_hosts(config: GAEAConfig, migration_count: int) -> list[str]:
     """Return migration candidates from other hosts. The migration_count set the upper limit of the number of candidates."""
     remote_branches = git.list_branches(config, list_remote=True)
+    git.merge_notes(config)
     hostname = config.hostname if config.hostname is not None else "host0"
-    branches = [branch for branch in remote_branches if not branch.startswith(hostname)]
-    import random
+    # filter out the branches that are from the current host
+    branches = [branch for branch in remote_branches if hostname not in branch]
 
     random.shuffle(branches)
     branches = branches[:migration_count]
+    print("Selected branches", branches)
     commits = [git.get_commit_by_branch(config, branch) for branch in branches]
     notes = [git.read_note(config, commit) for commit in commits]
     fitness = [decode_result(json.loads(note), np.inf) for note in notes]
