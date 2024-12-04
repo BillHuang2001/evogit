@@ -249,7 +249,14 @@ def add_note(
 
     cmd.append(commit)
 
-    subprocess.run(cmd, cwd=config.git_dir, input=note.encode("utf-8"), check=True)
+    subprocess.run(
+        cmd,
+        cwd=config.git_dir,
+        input=note.encode("utf-8"),
+        check=True,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
 
 
 def read_note(config: GAEAConfig, commit: Optional[str]) -> Optional[str]:
