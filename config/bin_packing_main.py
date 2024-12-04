@@ -57,9 +57,9 @@ if __name__ == "__main__":
             for _ in range(NUM_TEST_CASES):
                 num_bins = random.randint(NUM_MIN_BINS, NUM_MAX_BINS)
                 num_bins = 100_000
-                data = [random.random() for _ in range(num_bins)]
-                plan = bin_packing(copy.copy(data)) # copy data to avoid mutation
-                valid_plan(data, plan)
+                input_data = [random.random() for _ in range(num_bins)]
+                plan = bin_packing(copy.copy(input_data)) # copy data to avoid mutation
+                valid_plan(input_data, plan)
                 fitness.append(max(plan) + 1)
 
         result = {
