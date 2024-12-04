@@ -65,7 +65,7 @@ class BranchMonitor(Monitor):
 
     def git_update(self):
         if self.generation % self.config.fetch_every == 0:
-            api.fetch_remote_branches(self.config)
+            api.fetch_remote(self.config)
         if self.generation % self.config.push_every == 0:
             api.push_local_branches(self.config)
 
@@ -277,6 +277,8 @@ class MigrateHelper:
                     jnp.stack([hex_to_array(commit) for commit in commits]),
                     fitness,
                 )
+
+        self.logger.info("No commits found from other hosts")
 
         return (
             False,
