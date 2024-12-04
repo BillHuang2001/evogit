@@ -46,7 +46,7 @@ def create_git_dir(git_dir, force_create=False) -> None:
 
 
 def delete_remote_branches(config: GAEAConfig) -> None:
-    fetch_from_remote(config)
+    fetch_from_remote(config, async_fetch=False)
     remote_branches = list_branches(config, list_remote=True)
     print(f"Delete the following remote branches: {remote_branches}")
 
@@ -65,18 +65,21 @@ def delete_remote_branches(config: GAEAConfig) -> None:
 
 
 def delete_remote_notes(config: GAEAConfig) -> None:
-    remote_branches = list_branches(config, list_remote=True)
-    print(f"Delete the following remote notes: {remote_branches}")
+    fetch_notes_from_remote(config, async_fetch=False)
+    remote_notes_namespaces = list_remote_notes_namespaces(config)
+    print(f"Delete the following remote notes: {remote_notes_namespaces}")
 
     # delete all remote notes
-    branch_names = []
-    for remote_branch in remote_branches:
-        branch_name = remote_branch.split("/")[-1]
-        branch_names.append(branch_name)
-
-    if branch_names:
+    for remote_notes_namespace in remote_notes_namespaces:
         subprocess.run(
-            ["git", "push", "-q", "origin", "-d"] + branch_names,
+            [
+                "git",
+                "push",
+                "-q",
+                "origin",
+                "-d",
+                f"refs/notes/{remote_notes_namespace}",
+            ],
             cwd=config.git_dir,
             check=True,
         )
@@ -110,12 +113,13 @@ def init_git_repo(config: GAEAConfig) -> None:
             ["git", "push", "-f", "origin", "master"], cwd=git_dir, check=True
         )
         subprocess.run(
-            ["git", "push", "-d", "origin", "ref/notes/commits"],
+            ["git", "push", "-d", "origin", "refs/notes/commits"],
             cwd=git_dir,
             check=True,
         )
 
         delete_remote_branches(config)
+        delete_remote_notes(config)
 
 
 def clone_git_repo(config: GAEAConfig) -> None:
@@ -509,7 +513,7 @@ def push_notes_to_remote(config: GAEAConfig, async_push: str = True) -> None:
         "push",
         "-q",
         "origin",
-        f"refs/notes/commits:refs/notes/{remote_notes_namespace}",
+        f"refs/notes/commits:{remote_notes_namespace}",
     ]
     if async_push:
         # spawn the push process and return immediately
@@ -555,13 +559,37 @@ def fetch_from_remote(config: GAEAConfig, prune=True, async_fetch: str = True) -
         )
 
 
+def list_remote_notes_namespaces(config: GAEAConfig) -> list[str]:
+    """List all the remote notes namespaces."""
+    # read refs under local .git/refs/notes
+    # the format is like
+    # 09c5a2a refs/heads/main
+    # 6ac0ef4 refs/notes/commits
+
+    refs = subprocess.run(
+        ["git", "show-ref"],
+        check=True,
+        cwd=config.git_dir,
+        capture_output=True,
+    ).stdout.decode("utf-8")
+    refs = refs.split("\n")
+    refs = [ref.split()[-1] for ref in refs if ref != ""]
+    notes_namespaces = [
+        ref[11:]
+        for ref in refs
+        if ref.startswith("refs/notes/") and ref != "refs/notes/commits"
+    ]
+    return notes_namespaces
+
+
 def merge_notes(config: GAEAConfig) -> None:
     """Merge the notes from the remote repository."""
-    subprocess.run(
-        ["git", "notes", "merge", "-s", "ours", "refs/notes/commits"],
-        cwd=config.git_dir,
-        check=True,
-    )
+    remote_notes_namespaces = list_remote_notes_namespaces(config)
+    for remote_notes_namespace in remote_notes_namespaces:
+        subprocess.run(
+            ["git", "notes", "merge", "--strategy", "ours", remote_notes_namespace],
+            cwd=config.git_dir,
+        )
 
 
 def fetch_notes_from_remote(config: GAEAConfig, async_fetch: str = True) -> None:
@@ -584,8 +612,6 @@ def fetch_notes_from_remote(config: GAEAConfig, async_fetch: str = True) -> None
             stderr=subprocess.DEVNULL,
         )
 
-    merge_notes(config)
-
 
 def prune(config: GAEAConfig) -> None:
     """Run git prune."""
@@ -599,8 +625,8 @@ def prune(config: GAEAConfig) -> None:
     subprocess.run(
         ["git", "gc"],
         cwd=config.git_dir,
-        # stdout=subprocess.DEVNULL,
-        # stderr=subprocess.DEVNULL,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
     )
     subprocess.run(
         ["git", "notes", "prune"],
