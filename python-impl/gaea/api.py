@@ -341,11 +341,20 @@ def migrate_from_other_hosts(config: GAEAConfig, migration_count: int) -> list[s
     branches = [branch for branch in remote_branches if hostname not in branch]
 
     random.shuffle(branches)
-    branches = branches[:migration_count]
-    print("Selected branches", branches)
-    commits = [git.get_commit_by_branch(config, branch) for branch in branches]
-    notes = [git.read_note(config, commit) for commit in commits]
-    fitness = [decode_result(json.loads(note), np.inf) for note in notes]
+    commits = []
+    fitness = []
+    for branch in branches:
+        commit = git.get_commit_by_branch(config, branch)
+        note = git.read_note(config, commit)
+        if note is not None:
+            commits.append(commit)
+            fitness.append(decode_result(json.loads(note), np.inf))
+        else:
+            logger.warning(f"Note is not found for branch: {branch}  id: {commit}")
+
+        if len(commits) == migration_count:
+            break
+
     fitness = np.array(fitness).astype(np.float32)
     return commits, fitness
 
