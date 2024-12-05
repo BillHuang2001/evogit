@@ -139,6 +139,8 @@ def clone_git_repo(config: GAEAConfig) -> None:
     subprocess.run(
         ["git", "config", "user.email", config.git_user_email], cwd=git_dir, check=True
     )
+    # disable auto gc, since we will run it manually at the end of each evaluation
+    subprocess.run(["git", "config", "gc.auto", "0"], cwd=git_dir, check=True)
 
 
 def get_commit_by_branch(config: GAEAConfig, branch: str) -> str:
