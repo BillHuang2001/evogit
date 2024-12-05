@@ -570,24 +570,15 @@ def fetch_from_remote(config: GAEAConfig, prune=True, async_fetch: str = True) -
 
 def list_remote_notes_namespaces(config: GAEAConfig) -> list[str]:
     """List all the remote notes namespaces."""
-    # read refs under local .git/refs/notes
-    # the format is like
-    # 09c5a2a refs/heads/main
-    # 6ac0ef4 refs/notes/commits
-
     refs = subprocess.run(
-        ["git", "show-ref"],
+        ["git", "notes", "get-ref"],
         check=True,
         cwd=config.git_dir,
         capture_output=True,
     ).stdout.decode("utf-8")
     refs = refs.split("\n")
-    refs = [ref.split()[-1] for ref in refs if ref != ""]
-    notes_namespaces = [
-        ref[11:]
-        for ref in refs
-        if ref.startswith("refs/notes/") and ref != "refs/notes/commits"
-    ]
+    # remove the empty string and the default notes namespace
+    notes_namespaces = [ref[11:] for ref in refs if ref and ref != "refs/notes/commits"]
     return notes_namespaces
 
 
