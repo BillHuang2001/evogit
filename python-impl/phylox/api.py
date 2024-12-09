@@ -9,13 +9,13 @@ import random
 
 import numpy as np
 
-from .config import GAEAConfig
+from .config import PhyloXConfig
 from .utils import git, llm
 
-logger = logging.getLogger("gaea")
+logger = logging.getLogger("phylox")
 
 
-def init_repo(config: GAEAConfig, origin="local", force_create=False) -> None:
+def init_repo(config: PhyloXConfig, origin="local", force_create=False) -> None:
     """Initialize the git repository
 
     Parameters
@@ -36,7 +36,7 @@ def init_repo(config: GAEAConfig, origin="local", force_create=False) -> None:
         raise ValueError(f"Unknown option: {origin}")
 
 
-def update_branches(config: GAEAConfig, pop: list[str]) -> None:
+def update_branches(config: PhyloXConfig, pop: list[str]) -> None:
     """The branches are used to track the current state of the population"""
     branch_names = []
     hostname = config.hostname if config.hostname is not None else "host0"
@@ -47,7 +47,7 @@ def update_branches(config: GAEAConfig, pop: list[str]) -> None:
     git.branches_track_commits(config, branch_names, pop)
 
 
-def get_initial_branches(config: GAEAConfig, pop_size: int) -> list[str]:
+def get_initial_branches(config: PhyloXConfig, pop_size: int) -> list[str]:
     """Get the initial branches with a simple strategy.
     1. Try to load the existing branches from the local repository.
         Existing branches are the branches that are already created from previous runs.
@@ -78,29 +78,29 @@ def get_initial_branches(config: GAEAConfig, pop_size: int) -> list[str]:
     return pop
 
 
-def push_local_branches(config: GAEAConfig) -> None:
+def push_local_branches(config: PhyloXConfig) -> None:
     """Push all branches to the remote"""
     branches = git.list_branches(config)
     git.push_notes_to_remote(config)
     git.push_to_remote(config, branches)
 
 
-def fetch_remote(config: GAEAConfig) -> None:
+def fetch_remote(config: PhyloXConfig) -> None:
     """Fetch remote branches and notes"""
     git.fetch_from_remote(config)
     git.fetch_notes_from_remote(config)
 
 
-def prepare_temp_worktrees(config: GAEAConfig, commits: list[str]) -> None:
+def prepare_temp_worktrees(config: PhyloXConfig, commits: list[str]) -> None:
     worktrees = [git.add_temp_worktree(config, commit) for commit in commits]
     return worktrees
 
 
-def cleanup_temp_worktrees(config: GAEAConfig) -> str:
+def cleanup_temp_worktrees(config: PhyloXConfig) -> str:
     git.cleanup_temp_worktrees(config)
 
 
-def evaluate(config: GAEAConfig, commit: str, worktree) -> dict[str, str]:
+def evaluate(config: PhyloXConfig, commit: str, worktree) -> dict[str, str]:
     """Evaluate the the result of the individual. This function can be run in parallel.
 
     Parameters
@@ -180,14 +180,14 @@ def decode_result(output, illegal_value) -> Any:
 
 
 def update_notes(
-    config: GAEAConfig, commits: list[str], evaluate_results: list[str]
+    config: PhyloXConfig, commits: list[str], evaluate_results: list[str]
 ) -> None:
     for commit, result in zip(commits, evaluate_results):
         note = json.dumps(result)
         git.add_note(config, commit, note, overwrite=True)
 
 
-def git_crossover(config: GAEAConfig, seed: int, commit1: str, commit2: str) -> str:
+def git_crossover(config: PhyloXConfig, seed: int, commit1: str, commit2: str) -> str:
     """crossover between commit1 and commit2"""
     rng = np.random.default_rng(seed)
     use_merge = rng.choice([True, False], p=[config.merge_prob, 1 - config.merge_prob])
@@ -200,7 +200,7 @@ def git_crossover(config: GAEAConfig, seed: int, commit1: str, commit2: str) -> 
 
 
 def git_merge(
-    config: GAEAConfig, rng: np.random.Generator, commit1: str, commit2: str
+    config: PhyloXConfig, rng: np.random.Generator, commit1: str, commit2: str
 ) -> None:
     git.checkout(config, commit1)
     git.merge_branches(config, commit2)
@@ -219,7 +219,7 @@ def git_merge(
 
 
 def git_rebase(
-    config: GAEAConfig, rng: np.random.Generator, commit1: str, commit2: str
+    config: PhyloXConfig, rng: np.random.Generator, commit1: str, commit2: str
 ) -> None:
     git.checkout(config, commit1)
     git.rebase_branches(config, commit2)
@@ -322,7 +322,7 @@ def llm_crossover(config, llm_backend, seeds, commits) -> list[str]:
     return offspring
 
 
-def migrate_from_human_tags(config: GAEAConfig, migrate_count: int) -> list[str]:
+def migrate_from_human_tags(config: PhyloXConfig, migrate_count: int) -> list[str]:
     """Return migration candidates from human tags. The migrate_count set the upper limit of the number of candidates."""
     all_tags = git.list_tags(config)
     tags = [tag for tag in all_tags if tag.startswith("human")]
@@ -332,7 +332,7 @@ def migrate_from_human_tags(config: GAEAConfig, migrate_count: int) -> list[str]
     return commits
 
 
-def migrate_from_other_hosts(config: GAEAConfig, migration_count: int) -> list[str]:
+def migrate_from_other_hosts(config: PhyloXConfig, migration_count: int) -> list[str]:
     """Return migration candidates from other hosts. The migration_count set the upper limit of the number of candidates."""
     remote_branches = git.list_branches(config, list_remote=True)
     git.merge_notes(config)
@@ -359,6 +359,6 @@ def migrate_from_other_hosts(config: GAEAConfig, migration_count: int) -> list[s
     return commits, fitness
 
 
-def prune_commits(config: GAEAConfig) -> None:
+def prune_commits(config: PhyloXConfig) -> None:
     """Prune the commits that are reachable."""
     git.prune(config)

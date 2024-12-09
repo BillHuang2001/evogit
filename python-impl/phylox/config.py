@@ -3,7 +3,7 @@ from typing import Optional, Any
 
 
 @dataclass
-class GAEAConfig:
+class PhyloXConfig:
     num_objectives: int
     git_user_name: str
     git_user_email: str

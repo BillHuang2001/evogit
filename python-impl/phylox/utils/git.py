@@ -7,7 +7,7 @@ import os
 import shutil
 import tempfile
 import uuid
-from gaea.config import GAEAConfig
+from phylox.config import PhyloXConfig
 from typing import Optional
 import re
 
@@ -48,7 +48,7 @@ def create_git_dir(git_dir, force_create=False) -> None:
         os.mkdir(git_dir, mode=0o755)
 
 
-def delete_remote_branches(config: GAEAConfig) -> None:
+def delete_remote_branches(config: PhyloXConfig) -> None:
     fetch_from_remote(config, async_fetch=False)
     remote_branches = list_branches(config, list_remote=True)
     print(f"Delete the following remote branches: {remote_branches}")
@@ -67,7 +67,7 @@ def delete_remote_branches(config: GAEAConfig) -> None:
         )
 
 
-def delete_remote_notes(config: GAEAConfig) -> None:
+def delete_remote_notes(config: PhyloXConfig) -> None:
     fetch_notes_from_remote(config, async_fetch=False)
     remote_notes_namespaces = list_remote_notes_namespaces(config)
     print(f"Delete the following remote notes: {remote_notes_namespaces}")
@@ -88,7 +88,7 @@ def delete_remote_notes(config: GAEAConfig) -> None:
         )
 
 
-def init_git_repo(config: GAEAConfig) -> None:
+def init_git_repo(config: PhyloXConfig) -> None:
     git_dir = config.git_dir
 
     subprocess.run(
@@ -125,7 +125,7 @@ def init_git_repo(config: GAEAConfig) -> None:
         delete_remote_notes(config)
 
 
-def clone_git_repo(config: GAEAConfig) -> None:
+def clone_git_repo(config: PhyloXConfig) -> None:
     if config.remote_repo is None:
         raise ValueError("remote_repo is not set in the config.")
 
@@ -146,7 +146,7 @@ def clone_git_repo(config: GAEAConfig) -> None:
     subprocess.run(["git", "config", "gc.auto", "0"], cwd=git_dir, check=True)
 
 
-def get_commit_by_branch(config: GAEAConfig, branch: str) -> str:
+def get_commit_by_branch(config: PhyloXConfig, branch: str) -> str:
     return (
         subprocess.run(
             ["git", "rev-parse", branch],
@@ -159,17 +159,17 @@ def get_commit_by_branch(config: GAEAConfig, branch: str) -> str:
     )
 
 
-def get_commit_by_tag(config: GAEAConfig, tag: str) -> str:
+def get_commit_by_tag(config: PhyloXConfig, tag: str) -> str:
     return get_commit_by_branch(config, f"tags/{tag}")
 
 
-def read_head_commit(config: GAEAConfig) -> str:
+def read_head_commit(config: PhyloXConfig) -> str:
     """Read the commit id of the current HEAD."""
     return get_commit_by_branch(config, "HEAD")
 
 
 def list_branches(
-    config: GAEAConfig, list_remote: bool = False, ea_only: bool = True
+    config: PhyloXConfig, list_remote: bool = False, ea_only: bool = True
 ) -> list[str]:
     """List all branches in this repo.
     Parameters
@@ -219,7 +219,7 @@ def list_branches(
     return branches
 
 
-def list_tags(config: GAEAConfig) -> list[str]:
+def list_tags(config: PhyloXConfig) -> list[str]:
     """List all tags in this repo."""
     tags = subprocess.run(
         ["git", "tag"],
@@ -232,7 +232,7 @@ def list_tags(config: GAEAConfig) -> list[str]:
     return tags
 
 
-def delete_tags(config: GAEAConfig, tags: list[str]) -> None:
+def delete_tags(config: PhyloXConfig, tags: list[str]) -> None:
     """Delete the specified tags."""
     if tags:
         subprocess.run(
@@ -243,7 +243,7 @@ def delete_tags(config: GAEAConfig, tags: list[str]) -> None:
 
 
 def add_note(
-    config: GAEAConfig, commit: str, note: str, overwrite: bool = False
+    config: PhyloXConfig, commit: str, note: str, overwrite: bool = False
 ) -> None:
     """Add a note to the current commit. If overwrite is True, force overwrite the existing note."""
     # the note is passed through stdin, so we use `-F -` to let git read from stdin
@@ -264,7 +264,7 @@ def add_note(
     )
 
 
-def read_note(config: GAEAConfig, commit: Optional[str]) -> Optional[str]:
+def read_note(config: PhyloXConfig, commit: Optional[str]) -> Optional[str]:
     """Read the note of the specified commit. If commit is None, read the note of the current HEAD.
     Return None if the note does not exist.
     """
@@ -286,7 +286,7 @@ def read_note(config: GAEAConfig, commit: Optional[str]) -> Optional[str]:
 
 
 def update_file(
-    config: GAEAConfig, commit: str, new_content: str, commit_message: str
+    config: PhyloXConfig, commit: str, new_content: str, commit_message: str
 ) -> None:
     """Update the content of the file in the specified commit_id and commit the updated file."""
     checkout(config, commit)
@@ -308,7 +308,7 @@ def update_file(
     )
 
 
-def read_file(config: GAEAConfig, commit: str) -> str:
+def read_file(config: PhyloXConfig, commit: str) -> str:
     """Read the content of the file in the specified commit."""
     return subprocess.run(
         ["git", "show", f"{commit}:{config.filename}"],
@@ -318,11 +318,11 @@ def read_file(config: GAEAConfig, commit: str) -> str:
     ).stdout.decode("utf-8")
 
 
-def batch_read_files(config: GAEAConfig, commits: list[str]) -> list[str]:
+def batch_read_files(config: PhyloXConfig, commits: list[str]) -> list[str]:
     return [read_file(config, commit) for commit in commits]
 
 
-def has_conflict(config: GAEAConfig) -> bool:
+def has_conflict(config: PhyloXConfig) -> bool:
     """Return True if the current working directory has conflicts. Otherwise, return False."""
     status = subprocess.run(
         ["git", "status"], cwd=config.git_dir, capture_output=True, check=True
@@ -334,7 +334,7 @@ def has_conflict(config: GAEAConfig) -> bool:
         return False
 
 
-def count_conflicts(config: GAEAConfig) -> int:
+def count_conflicts(config: PhyloXConfig) -> int:
     """Count the number of conflicts in the current working directory."""
     with open(os.path.join(config.git_dir, config.filename), "r") as f:
         content = f.read()
@@ -342,7 +342,7 @@ def count_conflicts(config: GAEAConfig) -> int:
     return len(git_conflict_pattern.findall(content))
 
 
-def checkout(config: GAEAConfig, commit: str) -> None:
+def checkout(config: PhyloXConfig, commit: str) -> None:
     """Checkout the specified commit."""
     # -q is quiet, --detach is used to checkout the commit in detached HEAD mode
     subprocess.run(
@@ -354,10 +354,10 @@ def checkout(config: GAEAConfig, commit: str) -> None:
     )
 
 
-def add_temp_worktree(config: GAEAConfig, branch: str) -> str:
+def add_temp_worktree(config: PhyloXConfig, branch: str) -> str:
     """checkout the branch in a new worktree and return the path of the worktree."""
     # make a temporary directory if not exists
-    worktree_dir = os.path.join(config.git_dir, ".gaea_evaluate")
+    worktree_dir = os.path.join(config.git_dir, ".phylox_evaluate")
     if not os.path.exists(worktree_dir):
         # in case we have multiple instances running at the same time
         try:
@@ -376,7 +376,7 @@ def add_temp_worktree(config: GAEAConfig, branch: str) -> str:
     return worktree
 
 
-def remove_temp_worktree(config: GAEAConfig, worktree: str) -> None:
+def remove_temp_worktree(config: PhyloXConfig, worktree: str) -> None:
     """Remove the worktree of the branch."""
     subprocess.run(
         ["git", "worktree", "remove", "-f", worktree],
@@ -385,9 +385,9 @@ def remove_temp_worktree(config: GAEAConfig, worktree: str) -> None:
     )
 
 
-def cleanup_temp_worktrees(config: GAEAConfig) -> None:
-    """Remove all the worktrees in the .gaea_evaluate directory."""
-    worktree_dir = os.path.join(config.git_dir, ".gaea_evaluate")
+def cleanup_temp_worktrees(config: PhyloXConfig) -> None:
+    """Remove all the worktrees in the .phylox_evaluate directory."""
+    worktree_dir = os.path.join(config.git_dir, ".phylox_evaluate")
     if os.path.exists(worktree_dir):
         shutil.rmtree(worktree_dir)
 
@@ -398,7 +398,7 @@ def cleanup_temp_worktrees(config: GAEAConfig) -> None:
     )
 
 
-def merge_branches(config: GAEAConfig, commit: str) -> None:
+def merge_branches(config: PhyloXConfig, commit: str) -> None:
     """merge the commit specified by the commit_id to the current branch."""
     # don't check the return code because the merge may fail
     subprocess.run(
@@ -409,7 +409,7 @@ def merge_branches(config: GAEAConfig, commit: str) -> None:
     )
 
 
-def rebase_branches(config: GAEAConfig, commit: str) -> None:
+def rebase_branches(config: PhyloXConfig, commit: str) -> None:
     """rebase the current branch on the commit specified by the commit_id."""
     # don't check the return code because the rebase may fail
     # GIT_EDITOR=true is used to disable the interactive editor
@@ -423,7 +423,7 @@ def rebase_branches(config: GAEAConfig, commit: str) -> None:
     )
 
 
-def continue_merge(config: GAEAConfig) -> None:
+def continue_merge(config: PhyloXConfig) -> None:
     """Continue the merge process."""
     subprocess.run(
         ["git", "merge", "--continue"],
@@ -435,7 +435,7 @@ def continue_merge(config: GAEAConfig) -> None:
     )
 
 
-def continue_rebase(config: GAEAConfig) -> None:
+def continue_rebase(config: PhyloXConfig) -> None:
     """Continue the rebase process."""
     # GIT_EDITOR=true is used to disable the interactive editor
     # and accept the default commit message
@@ -448,7 +448,7 @@ def continue_rebase(config: GAEAConfig) -> None:
     )
 
 
-def handle_conflict(config: GAEAConfig, strategy: list[bool]) -> None:
+def handle_conflict(config: PhyloXConfig, strategy: list[bool]) -> None:
     """Handle the conflict by accept ours or theirs.
     The strategy is a list of bool values, where True means accepting ours, and False means accepting theirs.
     Write back the result to the file and git add.
@@ -473,7 +473,7 @@ def handle_conflict(config: GAEAConfig, strategy: list[bool]) -> None:
 
 
 def branches_track_commits(
-    config: GAEAConfig, branch_names: list[str], commits: list[str]
+    config: PhyloXConfig, branch_names: list[str], commits: list[str]
 ) -> None:
     """Create branches that track the specified commits."""
     processes = []
@@ -492,7 +492,7 @@ def branches_track_commits(
 
 
 def push_to_remote(
-    config: GAEAConfig, branches: list[str], async_push: str = True
+    config: PhyloXConfig, branches: list[str], async_push: str = True
 ) -> None:
     """Push the branch to the remote repository along side with the notes."""
     cmd = ["git", "push", "-q", "-f", "--atomic", "origin"]
@@ -516,7 +516,7 @@ def push_to_remote(
         )
 
 
-def push_notes_to_remote(config: GAEAConfig, async_push: str = True) -> None:
+def push_notes_to_remote(config: PhyloXConfig, async_push: str = True) -> None:
     """Push the notes to the remote repository."""
     remote_notes_namespace = f"refs/notes/{config.hostname}-commits"
     cmd = [
@@ -545,7 +545,7 @@ def push_notes_to_remote(config: GAEAConfig, async_push: str = True) -> None:
         )
 
 
-def fetch_from_remote(config: GAEAConfig, prune=True, async_fetch: str = True) -> None:
+def fetch_from_remote(config: PhyloXConfig, prune=True, async_fetch: str = True) -> None:
     """Fetch the notes from the remote repository."""
     cmd = ["git", "fetch", "-q"]
     if prune:
@@ -570,7 +570,7 @@ def fetch_from_remote(config: GAEAConfig, prune=True, async_fetch: str = True) -
         )
 
 
-def list_remote_notes_namespaces(config: GAEAConfig) -> list[str]:
+def list_remote_notes_namespaces(config: PhyloXConfig) -> list[str]:
     """List all the remote notes namespaces."""
     refs = subprocess.run(
         ["git", "notes", "get-ref"],
@@ -584,7 +584,7 @@ def list_remote_notes_namespaces(config: GAEAConfig) -> list[str]:
     return notes_namespaces
 
 
-def merge_notes(config: GAEAConfig) -> None:
+def merge_notes(config: PhyloXConfig) -> None:
     """Merge the notes from the remote repository."""
     remote_notes_namespaces = list_remote_notes_namespaces(config)
     for remote_notes_namespace in remote_notes_namespaces:
@@ -594,7 +594,7 @@ def merge_notes(config: GAEAConfig) -> None:
         )
 
 
-def fetch_notes_from_remote(config: GAEAConfig, async_fetch: str = True) -> None:
+def fetch_notes_from_remote(config: PhyloXConfig, async_fetch: str = True) -> None:
     """Fetch the notes from the remote repository."""
     cmd = ["git", "fetch", "-q", "origin", "refs/notes/*:refs/notes/*"]
 
@@ -615,7 +615,7 @@ def fetch_notes_from_remote(config: GAEAConfig, async_fetch: str = True) -> None
         )
 
 
-def prune(config: GAEAConfig) -> None:
+def prune(config: PhyloXConfig) -> None:
     """Run git prune."""
     gc_log = os.path.join(config.git_dir, ".git", "gc.log")
     if os.path.exists(gc_log):

@@ -27,7 +27,7 @@ class GeminiBackend:
         self.api_key = api_key
         self.http_req_params = http_req_params
         self.url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent"
-        self.logger = logging.getLogger("gaea")
+        self.logger = logging.getLogger("phylox")
         self.num_retry = 5
 
     def restful_request(self, query: str):
@@ -107,7 +107,7 @@ class TGIBackend:
         super().__init__()
         self.url = url
         self.http_req_params = http_req_params
-        self.logger = logging.getLogger("gaea")
+        self.logger = logging.getLogger("phylox")
         self.num_workers = num_workers
         self.num_retry = 100000
         self.usage_history = []
@@ -200,7 +200,7 @@ class HuggingfaceModel:
         import transformers
         from transformers import AutoModelForCausalLM, AutoTokenizer, Conversation
 
-        self.logger = logging.getLogger("gaea")
+        self.logger = logging.getLogger("phylox")
 
         self.tokenizer = AutoTokenizer.from_pretrained(
             model, trust_remote_code=trust_remote_code

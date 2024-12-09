@@ -8,7 +8,7 @@ import jax.numpy as jnp
 from evox import Monitor, Problem, jit_class
 from jax.experimental import io_callback
 
-from gaea import api
+from phylox import api
 
 
 # commit_id is either sha1 - 160 bits or sha256 - 256 bits
@@ -80,7 +80,7 @@ class BranchMonitor(Monitor):
         return self.fitness_history
 
 
-def gaea_git_crossover(config, seeds, parents):
+def phylox_git_crossover(config, seeds, parents):
     offspring = []
     for seed, commit1, commit2 in zip(seeds, parents[0], parents[1]):
         commit1 = array_to_hex(commit1)
@@ -103,10 +103,10 @@ def git_crossover(config, type, key, parents):
 
     byte_length = HASH_BYTE_LENGTH[config.git_hash]
     return_type = jax.ShapeDtypeStruct((num_pairs, byte_length), jnp.uint8)
-    return io_callback(partial(gaea_git_crossover, config), return_type, seeds, parents)
+    return io_callback(partial(phylox_git_crossover, config), return_type, seeds, parents)
 
 
-def gaea_llm_mutation(config, llm_backend, seeds, pop):
+def phylox_llm_mutation(config, llm_backend, seeds, pop):
     commits = [array_to_hex(commit) for commit in pop]
     seeds = seeds.tolist()
     new_commits = api.llm_mutation(config, llm_backend, seeds, commits)
@@ -115,7 +115,7 @@ def gaea_llm_mutation(config, llm_backend, seeds, pop):
     return jnp.stack(offspring)
 
 
-def gaea_llm_crossover(config, llm_backend, seeds, pop):
+def phylox_llm_crossover(config, llm_backend, seeds, pop):
     commits = [array_to_hex(commit) for commit in pop]
     seeds = seeds.tolist()
     new_commits = api.llm_crossover(config, llm_backend, seeds, commits)
@@ -132,7 +132,7 @@ def llm_mutation(config, llm_backend, key, pop):
     byte_length = HASH_BYTE_LENGTH[config.git_hash]
     return_type = jax.ShapeDtypeStruct((pop_size, byte_length), jnp.uint8)
     return io_callback(
-        partial(gaea_llm_mutation, config, llm_backend), return_type, seeds, pop
+        partial(phylox_llm_mutation, config, llm_backend), return_type, seeds, pop
     )
 
 
@@ -144,7 +144,7 @@ def llm_crossover(config, llm_backend, key, pop):
     byte_length = HASH_BYTE_LENGTH[config.git_hash]
     return_type = jax.ShapeDtypeStruct((pop_size // 2, byte_length), jnp.uint8)
     return io_callback(
-        partial(gaea_llm_crossover, config, llm_backend), return_type, seeds, pop
+        partial(phylox_llm_crossover, config, llm_backend), return_type, seeds, pop
     )
 
 
@@ -180,7 +180,7 @@ class LLMCrossover:
 
 def evaluate(config, pool, pop):
     pop = [array_to_hex(individual) for individual in pop]
-    logger = logging.getLogger("gaea")
+    logger = logging.getLogger("phylox")
     logger.info(pop)
 
     # 1. prepare worktrees  2. evaluate  3. update notes  4. cleanup worktrees
@@ -236,7 +236,7 @@ class MigrateHelper:
     def __init__(self, config):
         self.config = config
         self.generation = 0
-        self.logger = logging.getLogger("gaea")
+        self.logger = logging.getLogger("phylox")
 
     def migrate_from_human(self):
         byte_length = HASH_BYTE_LENGTH[self.config.git_hash]
