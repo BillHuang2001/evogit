@@ -155,7 +155,7 @@ class GitCrossover:
         self.type = type
 
     def __call__(self, key, parents):
-        return git_crossover(self.config, type, key, parents)
+        return git_crossover(self.config, self.type, key, parents)
 
 
 @jit_class
