@@ -25,7 +25,7 @@ git_conflict_pattern = re.compile(
 )
 # sometimes the LLM can output null characters, which will cause git commit to fail
 # makt sure it only contain alphanumeric, space, underscore and hyphen
-git_commit_message_pattern = re.compile(r"[^a-zA-Z0-9_\- ]")
+git_commit_message_pattern = re.compile(r"[^a-zA-Z0-9:_\- ]")
 
 
 def create_git_dir(git_dir, force_create=False) -> None:
