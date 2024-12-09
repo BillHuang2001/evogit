@@ -57,7 +57,9 @@ class BranchMonitor(Monitor):
         return
 
     def post_step(self, state, workflow_state):
-        population = getattr(workflow_state.get_child_state("algorithm"), self.population_name)
+        population = getattr(
+            workflow_state.get_child_state("algorithm"), self.population_name
+        )
         state = state.register_callback(self.update_branches, population)
         if self.sync_to_remote:
             state = state.register_callback(self.git_update)
@@ -182,19 +184,21 @@ def evaluate(config, pool, pop):
     logger.info(pop)
 
     # 1. prepare worktrees  2. evaluate  3. update notes  4. cleanup worktrees
-    worktrees = api.prepare_temp_worktrees(config, pop)
-    output = list(pool.map(partial(api.evaluate, config), pop, worktrees))
-    api.update_notes(config, pop, output)
+    unique_pop = list(set(pop))  # deduplicate
+    worktrees = api.prepare_temp_worktrees(config, unique_pop)
+    outputs = list(pool.map(partial(api.evaluate, config), unique_pop, worktrees))
+    api.update_notes(config, unique_pop, outputs)
     api.cleanup_temp_worktrees(config)
 
     if config.num_objectives == 1:
         illegal_value = jnp.inf
     else:
         illegal_value = [jnp.inf for _ in range(config.num_objectives)]
-    fitness = []
-    for o in output:
-        fit = api.decode_result(o, illegal_value)
-        fitness.append(fit)
+    commit_to_fitness = {}
+    for commit_id, output in zip(unique_pop, outputs):
+        fit = api.decode_result(output, illegal_value)
+        commit_to_fitness[commit_id] = fit
+    fitness = [commit_to_fitness[commit_id] for commit_id in pop]
     return jnp.array(fitness).astype(jnp.float32)
 
 
