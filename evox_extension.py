@@ -150,7 +150,7 @@ def llm_crossover(config, llm_backend, key, pop):
 
 @jit_class
 class GitCrossover:
-    def __init__(self, config, type=2):
+    def __init__(self, config, type=1):
         self.config = config
         self.type = type
 
