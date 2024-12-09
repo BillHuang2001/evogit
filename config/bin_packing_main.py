@@ -1,10 +1,8 @@
 import json
 import sys
-import time
 import traceback
 import random
 import os
-import sys
 import copy
 
 
@@ -55,7 +53,6 @@ if __name__ == "__main__":
         fitness = []
         with HiddenPrints():
             for _ in range(NUM_TEST_CASES):
-                num_bins = random.randint(NUM_MIN_BINS, NUM_MAX_BINS)
                 num_bins = 100_000
                 input_data = [random.random() for _ in range(num_bins)]
                 plan = bin_packing(copy.copy(input_data)) # copy data to avoid mutation
