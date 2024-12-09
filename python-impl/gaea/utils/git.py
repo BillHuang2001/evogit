@@ -23,6 +23,9 @@ import re
 git_conflict_pattern = re.compile(
     r"<<<<<<<.*?\n(.*?)=======.*?\n(.*?)>>>>>>>.*?\n", re.DOTALL
 )
+# sometimes the LLM can output null characters, which will cause git commit to fail
+# makt sure it only contain alphanumeric, space, underscore and hyphen
+git_commit_message_pattern = re.compile(r"[^a-zA-Z0-9_\- ]")
 
 
 def create_git_dir(git_dir, force_create=False) -> None:
@@ -298,9 +301,8 @@ def update_file(
         f.truncate()
 
     subprocess.run(["git", "add", config.filename], cwd=config.git_dir, check=True)
-    # sometimes the LLM can output null characters, which will cause git commit to fail
-    # makt sure it has less than 256 characters and only contain alphanumeric characters
-    commit_message = re.sub(r"[^a-zA-Z0-9_]", "", commit_message[:256])
+    commit_message = git_commit_message_pattern.sub("", commit_message)
+    commit_message = commit_message[:256] # truncate the message to 256 characters
     subprocess.run(
         ["git", "commit", "-q", "-m", commit_message], cwd=config.git_dir, check=True
     )
