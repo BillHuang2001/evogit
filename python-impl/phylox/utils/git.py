@@ -500,7 +500,7 @@ def push_to_remote(
     if async_push:
         # spawn the push process and return immediately
         # don't wait for the push to finish
-        subprocess.Popen(
+        return subprocess.Popen(
             cmd,
             cwd=config.git_dir,
             stdout=subprocess.DEVNULL,
@@ -529,7 +529,7 @@ def push_notes_to_remote(config: PhyloXConfig, async_push: str = True) -> None:
     if async_push:
         # spawn the push process and return immediately
         # don't wait for the push to finish
-        subprocess.Popen(
+        return subprocess.Popen(
             cmd,
             cwd=config.git_dir,
             stdout=subprocess.DEVNULL,
@@ -554,7 +554,7 @@ def fetch_from_remote(config: PhyloXConfig, prune=True, async_fetch: str = True)
     cmd.append("origin")
 
     if async_fetch:
-        subprocess.Popen(
+        return subprocess.Popen(
             cmd,
             cwd=config.git_dir,
             stdout=subprocess.DEVNULL,
@@ -599,7 +599,7 @@ def fetch_notes_from_remote(config: PhyloXConfig, async_fetch: str = True) -> No
     cmd = ["git", "fetch", "-q", "origin", "refs/notes/*:refs/notes/*"]
 
     if async_fetch:
-        subprocess.Popen(
+        return subprocess.Popen(
             cmd,
             cwd=config.git_dir,
             stdout=subprocess.DEVNULL,

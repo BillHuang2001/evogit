@@ -81,14 +81,16 @@ def get_initial_branches(config: PhyloXConfig, pop_size: int) -> list[str]:
 def push_local_branches(config: PhyloXConfig) -> None:
     """Push all branches to the remote"""
     branches = git.list_branches(config)
-    git.push_notes_to_remote(config)
-    git.push_to_remote(config, branches)
+    proc1 = git.push_notes_to_remote(config)
+    proc2 = git.push_to_remote(config, branches)
+    return proc1, proc2
 
 
 def fetch_remote(config: PhyloXConfig) -> None:
     """Fetch remote branches and notes"""
-    git.fetch_from_remote(config)
-    git.fetch_notes_from_remote(config)
+    proc1 = git.fetch_from_remote(config)
+    proc2 = git.fetch_notes_from_remote(config)
+    return proc1, proc2
 
 
 def prepare_temp_worktrees(config: PhyloXConfig, commits: list[str]) -> None:

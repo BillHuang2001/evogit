@@ -66,10 +66,14 @@ class BranchMonitor(Monitor):
         return state
 
     def git_update(self):
+        handlers = []
         if self.generation % self.config.fetch_every == 0:
-            api.fetch_remote(self.config)
+            handlers.extend(api.fetch_remote(self.config))
         if self.generation % self.config.push_every == 0:
-            api.push_local_branches(self.config)
+            handlers.extend(api.push_local_branches(self.config))
+
+        for proc in handlers:
+            proc.wait()
 
         self.generation += 1
 
@@ -103,7 +107,9 @@ def git_crossover(config, type, key, parents):
 
     byte_length = HASH_BYTE_LENGTH[config.git_hash]
     return_type = jax.ShapeDtypeStruct((num_pairs, byte_length), jnp.uint8)
-    return io_callback(partial(phylox_git_crossover, config), return_type, seeds, parents)
+    return io_callback(
+        partial(phylox_git_crossover, config), return_type, seeds, parents
+    )
 
 
 def phylox_llm_mutation(config, llm_backend, seeds, pop):
