@@ -302,7 +302,7 @@ def update_file(
 
     subprocess.run(["git", "add", config.filename], cwd=config.git_dir, check=True)
     commit_message = git_commit_message_pattern.sub("", commit_message)
-    commit_message = commit_message[:256] # truncate the message to 256 characters
+    commit_message = commit_message[:256]  # truncate the message to 256 characters
     subprocess.run(
         ["git", "commit", "-q", "-m", commit_message], cwd=config.git_dir, check=True
     )
@@ -491,6 +491,74 @@ def branches_track_commits(
         assert proc.returncode == 0, "Failed to create branch that tracks the commit."
 
 
+def pairwise_distances(config: PhyloXConfig, commits: list[str]) -> list[list[int]]:
+    """Calculate the pairwise distances between the commits.
+    Return a matrix where the element at (i, j) is the distance between commit i and commit j.
+    The matrix is guaranteed to be symmetric.
+    """
+    n_commits = len(commits)
+    distances = [[0] * n_commits for _ in range(n_commits)]
+    handlers = []
+    for i in range(n_commits):
+        for j in range(i + 1, n_commits):
+            proc = subprocess.Popen(
+                ["git", "rev-list", "--count", f"{commits[i]}...{commits[j]}"],
+                cwd=config.git_dir,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+            )
+            handlers.append((i, j, proc))
+
+    for i, j, proc in handlers:
+        stdout, stderr = proc.communicate()
+        assert proc.returncode == 0, "Failed to calculate the distance."
+        distances[i][j] = distances[j][i] = int(stdout.decode("utf-8").strip())
+
+    return distances
+
+
+def pairwise_shared_merge_base_distances(
+    config: PhyloXConfig, commits: list[str]
+) -> list[list[int]]:
+    """Calculate the pairwise distances from the merge bases to the initial commits."""
+    n_commits = len(commits)
+    distances = [[0] * n_commits for _ in range(n_commits)]
+    merge_bases_handlers = []
+    rev_count_handlers = []
+    for i in range(n_commits):
+        for j in range(i + 1, n_commits):
+            proc = subprocess.Popen(
+                ["git", "merge-base", "--all", commits[i], commits[j]],
+                cwd=config.git_dir,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+            )
+            merge_bases_handlers.append((i, j, proc))
+
+    merge_bases = []
+    for i, j, proc in merge_bases_handlers:
+        stdout, stderr = proc.communicate()
+        assert proc.returncode == 0, "Failed to calculate the merge base."
+        merge_base = stdout.decode("utf-8").strip().split()
+        merge_bases.append((i, j, merge_base))
+
+    for i, j, merge_base in merge_bases:
+        proc = subprocess.Popen(
+            ["git", "rev-list", "--count"] + merge_base,
+            cwd=config.git_dir,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
+        rev_count_handlers.append((i, j, proc))
+
+    for i, j, proc in rev_count_handlers:
+        stdout, stderr = proc.communicate()
+        assert proc.returncode == 0, "Failed to calculate the distance."
+        distances[i][j] = distances[j][i] = int(stdout.decode("utf-8").strip())
+
+    return distances
+
+
 def push_to_remote(
     config: PhyloXConfig, branches: list[str], async_push: str = True
 ) -> None:
@@ -545,7 +613,9 @@ def push_notes_to_remote(config: PhyloXConfig, async_push: str = True) -> None:
         )
 
 
-def fetch_from_remote(config: PhyloXConfig, prune=True, async_fetch: str = True) -> None:
+def fetch_from_remote(
+    config: PhyloXConfig, prune=True, async_fetch: str = True
+) -> None:
     """Fetch the notes from the remote repository."""
     cmd = ["git", "fetch", "-q"]
     if prune:
