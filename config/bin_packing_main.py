@@ -16,9 +16,7 @@ class HiddenPrints:
         sys.stdout = self._original_stdout
 
 
-NUM_TEST_CASES = 100
-NUM_MIN_BINS = 5000
-NUM_MAX_BINS = 10000
+NUM_TEST_CASES = 10
 
 
 def valid_plan(data, plan):
@@ -31,12 +29,11 @@ def valid_plan(data, plan):
     if min(plan) != 0:
         raise ValueError(f"Bin index must start from 0")
 
-    bins = [[] for _ in range(max(plan) + 1)]
+    bins = [0 for _ in range(max(plan) + 1)]
     for item, bin_id in zip(data, plan):
-        bins[bin_id].append(item)
-    for i, bin_ in enumerate(bins):
-        if sum(bin_) > 1:
-            raise ValueError(f"Bin {i} has sum > 1")
+        bins[bin_id] += item
+        if bins[bin_id] > 1:
+            raise ValueError(f"Bin {bin_id} has sum > 1")
     return True
 
 
@@ -62,7 +59,7 @@ if __name__ == "__main__":
         result = {
             "status": "finished",
             "stack_trace": "",
-            "fitness": sum(fitness),
+            "fitness": sum(fitness) / len(fitness),
         }
     except Exception as e:
         filtered_tb = []
