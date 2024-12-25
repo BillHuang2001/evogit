@@ -192,7 +192,7 @@ def evaluate(config, pool, pop):
     # 1. prepare worktrees  2. evaluate  3. update notes  4. cleanup worktrees
     unique_pop = list(set(pop))  # deduplicate
     worktrees = api.prepare_temp_worktrees(config, unique_pop)
-    outputs = list(pool.map(partial(api.evaluate, config), unique_pop, worktrees))
+    outputs = list(pool.map(partial(api.evaluate_code, config), unique_pop, worktrees))
     api.update_notes(config, unique_pop, outputs)
     api.cleanup_temp_worktrees(config)
 

@@ -102,7 +102,7 @@ def cleanup_temp_worktrees(config: PhyloXConfig) -> str:
     git.cleanup_temp_worktrees(config)
 
 
-def evaluate(config: PhyloXConfig, commit: str, worktree) -> dict[str, str]:
+def evaluate_code(config: PhyloXConfig, commit: str, worktree) -> dict[str, str]:
     """Evaluate the the result of the individual. This function can be run in parallel.
 
     Parameters
