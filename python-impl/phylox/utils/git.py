@@ -8,7 +8,7 @@ import shutil
 import tempfile
 import uuid
 from phylox.config import PhyloXConfig
-from typing import Optional
+from typing import Optional, Union
 import re
 
 
@@ -286,11 +286,22 @@ def read_note(config: PhyloXConfig, commit: Optional[str]) -> Optional[str]:
 
 
 def update_file(
-    config: PhyloXConfig, commit: str, new_content: str, commit_message: str
+    config: PhyloXConfig, commit: str, new_content: Union[str,bytes], commit_message: str
 ) -> None:
-    """Update the content of the file in the specified commit_id and commit the updated file."""
+    """Update the content of the file in the specified commit_id and commit the updated file.
+    new_content can be either a string or bytes,
+    when it is a string, it will be written in text mode, otherwise, it will be written in binary mode.
+    """
     checkout(config, commit)
-    with open(os.path.join(config.git_dir, config.filename), "r+") as f:
+
+    if isinstance(new_content, str):
+        mode = "r+"
+    elif isinstance(new_content, bytes):
+        mode = "rb+"
+    else:
+        raise ValueError("new_content must be either a string or bytes.")
+
+    with open(os.path.join(config.git_dir, config.filename), mode) as f:
         current_content = f.read()
         # if the content is the same, do nothing
         if current_content == new_content:
