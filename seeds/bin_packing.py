@@ -3,6 +3,7 @@ def bin_packing(items: list[float]) -> list[int]:
     The function should returns a packing plan,
     where each item is assigned to a bin encoded as an integer from 0 to n-1,
     and n is the total number of bins used.
+    The time complexity of the function should be less than O(n^2).
 
     For example:
     >>> items = [0.8, 0.01, 0.2, 0.99]
