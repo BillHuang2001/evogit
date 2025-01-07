@@ -286,7 +286,10 @@ def read_note(config: PhyloXConfig, commit: Optional[str]) -> Optional[str]:
 
 
 def update_file(
-    config: PhyloXConfig, commit: str, new_content: Union[str,bytes], commit_message: str
+    config: PhyloXConfig,
+    commit: str,
+    new_content: Union[str, bytes],
+    commit_message: str,
 ) -> None:
     """Update the content of the file in the specified commit_id and commit the updated file.
     new_content can be either a string or bytes,
@@ -319,14 +322,21 @@ def update_file(
     )
 
 
-def read_file(config: PhyloXConfig, commit: str) -> str:
+def read_file(config: PhyloXConfig, commit: str, mode: str = "text") -> str:
     """Read the content of the file in the specified commit."""
-    return subprocess.run(
+    completed_proc = subprocess.run(
         ["git", "show", f"{commit}:{config.filename}"],
         cwd=config.git_dir,
         check=True,
         capture_output=True,
-    ).stdout.decode("utf-8")
+    )
+
+    if mode == "text":
+        return completed_proc.stdout.decode("utf-8")
+    elif mode == "binary":
+        return completed_proc.stdout
+    else:
+        raise ValueError("mode must be either 'text' or 'binary'.")
 
 
 def batch_read_files(config: PhyloXConfig, commits: list[str]) -> list[str]:
