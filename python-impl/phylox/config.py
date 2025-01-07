@@ -30,6 +30,7 @@ class PhyloXConfig:
     respond_extractor: callable
     remote_repo: Optional[str]
     hostname: Optional[str]
+    merge_driver: Optional[str]
 
     def __hash__(self):
         return id(self)

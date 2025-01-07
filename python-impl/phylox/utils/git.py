@@ -105,6 +105,7 @@ def init_git_repo(config: PhyloXConfig) -> None:
     subprocess.run(["git", "commit", "-q", "-m", "init"], cwd=git_dir, check=True)
     # disable auto gc, since we will run it manually at the end of each evaluation
     subprocess.run(["git", "config", "gc.auto", "0"], cwd=git_dir, check=True)
+    config_merge_driver(config)
 
     if config.remote_repo is not None:
         subprocess.run(
@@ -144,6 +145,22 @@ def clone_git_repo(config: PhyloXConfig) -> None:
     )
     # disable auto gc, since we will run it manually at the end of each evaluation
     subprocess.run(["git", "config", "gc.auto", "0"], cwd=git_dir, check=True)
+    config_merge_driver(config)
+
+
+def config_merge_driver(config: PhyloXConfig) -> None:
+    template = (
+        "[merge {name}]"
+        "\tname = phylox custom merge driver"
+        "\tdriver = {path} %O %A %B\n"
+    )
+    if config.merge_driver is not None:
+        with open(os.path.join(config.git_dir, ".git/config"), "a") as f:
+            f.write(
+                template.format(
+                    name="phylox-custom-merge-driver", path=config.merge_driver
+                )
+            )
 
 
 def get_commit_by_branch(config: PhyloXConfig, branch: str) -> str:
