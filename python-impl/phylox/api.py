@@ -1,5 +1,6 @@
 import json
 import logging
+import io
 import os
 import subprocess
 from collections import namedtuple
@@ -163,22 +164,27 @@ def evaluate_code(config: PhyloXConfig, commit: str, worktree) -> dict[str, str]
 
 
 def decode_result(output, illegal_value) -> Any:
-    if output["timeout"] == True:
-        fit = illegal_value
+    if output["timeout"] is True:
+        performance_cost = illegal_value
+        time_cost = illegal_value
     else:
         try:
             stdout = json.loads(output["stdout"])
             if stdout["status"] == "finished":
-                fit = stdout["fitness"]
+                performance_cost = stdout["fitness"]
+                time_cost = stdout["time_cost"]
             else:
-                fit = illegal_value
+                performance_cost = illegal_value
+                time_cost = illegal_value
         except json.JSONDecodeError:
-            fit = illegal_value
+            performance_cost = illegal_value
+            time_cost = illegal_value
         except Exception as e:
             logger.error(f"Unknown error occurred: {e}")
-            fit = illegal_value
+            performance_cost = illegal_value
+            time_cost = illegal_value
 
-    return fit
+    return performance_cost, time_cost
 
 
 def update_notes(
@@ -322,6 +328,37 @@ def llm_crossover(config, llm_backend, seeds, commits) -> list[str]:
         offspring.append(git.read_head_commit(config))
 
     return offspring
+
+
+def vector_mutation(config: PhyloXConfig, seed: int, commits: list[str]) -> str:
+    """Mutation of the individual"""
+    vectors = []
+    for commit in commits:
+        binary_data = git.read_file(config, commit, mode="binary")
+        with io.BytesIO(binary_data) as f:
+            vector = np.load(f)
+            vectors.append(vector)
+
+    vectors = np.array(vectors)
+    mutated_vectors = vectors
+    output_binaries = []
+    for vector in mutated_vectors:
+        with io.BytesIO() as f:
+            np.save(f, vector)
+            output_binaries.append(f.getvalue())
+    git.update_file(config, commit, mutated_vectors, "Mutation")
+    return git.read_head_commit(config)
+
+
+def vector_direct_crossover(config: PhyloXConfig, seed: int, commits: list[str]) -> str:
+    vectors = []
+    for commit in commits:
+        binary_data = git.read_file(config, commit, mode="binary")
+        with io.BytesIO(binary_data) as f:
+            vector = np.load(f)
+            vectors.append(vector)
+
+    vectors = np.array(vectors)
 
 
 def migrate_from_human_tags(config: PhyloXConfig, migrate_count: int) -> list[str]:

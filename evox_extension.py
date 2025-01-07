@@ -202,8 +202,8 @@ def evaluate(config, pool, pop):
         illegal_value = [jnp.inf for _ in range(config.num_objectives)]
     commit_to_fitness = {}
     for commit_id, output in zip(unique_pop, outputs):
-        fit = api.decode_result(output, illegal_value)
-        commit_to_fitness[commit_id] = fit
+        performance_cost, time_cost = api.decode_result(output, illegal_value)
+        commit_to_fitness[commit_id] = [performance_cost, time_cost]
     fitness = [commit_to_fitness[commit_id] for commit_id in pop]
     return jnp.array(fitness).astype(jnp.float32)
 

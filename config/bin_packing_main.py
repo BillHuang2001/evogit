@@ -4,6 +4,7 @@ import traceback
 import random
 import os
 import copy
+import time
 
 
 class HiddenPrints:
@@ -48,6 +49,7 @@ if __name__ == "__main__":
         # set the random seed
         random.seed(42)
         fitness = []
+        start_time = time.perf_counter()
         with HiddenPrints():
             for _ in range(NUM_TEST_CASES):
                 num_bins = 100_000
@@ -55,11 +57,13 @@ if __name__ == "__main__":
                 plan = bin_packing(copy.copy(input_data)) # copy data to avoid mutation
                 valid_plan(input_data, plan)
                 fitness.append(max(plan) + 1)
+        end_time = time.perf_counter()
 
         result = {
             "status": "finished",
             "stack_trace": "",
             "fitness": sum(fitness) / len(fitness),
+            "time_cost": end_time - start_time,
         }
     except Exception as e:
         filtered_tb = []
