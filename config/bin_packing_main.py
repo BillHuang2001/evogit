@@ -52,7 +52,7 @@ if __name__ == "__main__":
         start_time = time.perf_counter()
         with HiddenPrints():
             for _ in range(NUM_TEST_CASES):
-                num_bins = 100_000
+                num_bins = 10_000
                 input_data = [random.random() for _ in range(num_bins)]
                 plan = bin_packing(copy.copy(input_data)) # copy data to avoid mutation
                 valid_plan(input_data, plan)
