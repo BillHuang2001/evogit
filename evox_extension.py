@@ -196,10 +196,8 @@ def evaluate(config, pool, pop):
     api.update_notes(config, unique_pop, outputs)
     api.cleanup_temp_worktrees(config)
 
-    if config.num_objectives == 1:
-        illegal_value = jnp.inf
-    else:
-        illegal_value = [jnp.inf for _ in range(config.num_objectives)]
+    illegal_value = 1e8
+
     commit_to_fitness = {}
     for commit_id, output in zip(unique_pop, outputs):
         performance_cost, time_cost = api.decode_result(output, illegal_value)
