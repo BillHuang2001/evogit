@@ -529,6 +529,17 @@ def branches_track_commits(
         assert proc.returncode == 0, "Failed to create branch that tracks the commit."
 
 
+def fast_forwardness(config: PhyloXConfig, commit1: str, commit2: str) -> bool:
+    """Check if commit1 is able to fast-forward to commit2. Return True if it is able to fast-forward."""
+    code = subprocess.run(
+        ["git", "merge-base", "--is-ancestor", commit1, commit2],
+        cwd=config.git_dir,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    ).returncode
+    return code == 0
+
+
 def pairwise_distances(config: PhyloXConfig, commits: list[str]) -> list[list[int]]:
     """Calculate the pairwise distances between the commits.
     Return a matrix where the element at (i, j) is the distance between commit i and commit j.

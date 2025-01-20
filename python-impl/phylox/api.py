@@ -195,6 +195,14 @@ def update_notes(
         git.add_note(config, commit, note, overwrite=True)
 
 
+def is_novel_merge(config: PhyloXConfig, commit1: str, commit2: str) -> bool:
+    """Check if the merge of commit1 and commit2 is novel, that is, A and B are not ancestor of each other."""
+    return not (
+        git.fast_forwardness(config, commit1, commit2)
+        or git.fast_forwardness(config, commit2, commit1)
+    )
+
+
 def git_crossover(config: PhyloXConfig, seed: int, commit1: str, commit2: str) -> str:
     """crossover between commit1 and commit2"""
     rng = np.random.default_rng(seed)

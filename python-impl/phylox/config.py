@@ -28,6 +28,7 @@ class PhyloXConfig:
     timeout: int
     prompt_constructor: callable
     respond_extractor: callable
+    max_merge_retry: int
     remote_repo: Optional[str]
     hostname: Optional[str]
     merge_driver: Optional[str]
