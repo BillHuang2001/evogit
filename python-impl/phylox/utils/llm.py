@@ -90,9 +90,11 @@ class GeminiBackend:
 class TGIBackend:
     def __init__(
         self,
-        url: str = "http://127.0.0.1:8080/v1/chat/completions",
+        base_url: str = "http://127.0.0.1:8080",
         http_req_params: dict = {},
         num_workers=4,
+        model="",
+        api_key="-",
         extra_args={},
     ) -> None:
         """
@@ -105,7 +107,7 @@ class TGIBackend:
             Common parameters include `timeout`, `proxies`, etc.
         """
         super().__init__()
-        self.url = url
+        self.url = base_url + "/v1/chat/completions"
         self.http_req_params = http_req_params
         self.logger = logging.getLogger("phylox")
         self.num_workers = num_workers
@@ -114,11 +116,14 @@ class TGIBackend:
         if num_workers > 1:
             self.pool = ThreadPoolExecutor(max_workers=num_workers)
         self.extra_args = extra_args
+        self.api_key = api_key
+        self.model = model
 
     def _one_restful_request(self, args):
         seed, query = args
         headers = {
             "Content-Type": "application/json",
+            "Authorization": "Bearer " + self.api_key,
         }
         messages = [
             {
@@ -129,7 +134,7 @@ class TGIBackend:
         data = {
             "messages": messages,
             "stream": False,
-            "model": "",
+            "model": self.model,
             "seed": seed,
             "max_tokens": 10000,
         }
