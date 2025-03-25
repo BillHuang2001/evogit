@@ -3,7 +3,7 @@ from functools import partial
 import logging
 import weakref
 
-from evox.core import Problem, jit_class, ModuleBase
+from evox.core import Problem, ModuleBase
 from evox.operators.mutation import polynomial_mutation
 import torch
 
@@ -142,7 +142,6 @@ __config__ = {}
 __llm_backend__ = {}
 
 
-@jit_class
 class GitCrossover(Problem):
     def __init__(self, config):
         super().__init__()
@@ -155,10 +154,9 @@ class GitCrossover(Problem):
 
     def do(self, parents):
         config = __config__[self._index_id_]
-        return git_crossover(config, 1, parents)
+        return git_crossover(config, parents)
 
 
-@jit_class
 class LLMMutation(ModuleBase):
     def __init__(self, config):
         super().__init__()
@@ -179,7 +177,6 @@ class LLMMutation(ModuleBase):
         return llm_mutation(config, llm_backend, pop)
 
 
-@jit_class
 class LLMCrossover(ModuleBase):
     def __init__(self, config):
         super().__init__()
@@ -228,7 +225,6 @@ def evaluate(config, pool, pop):
 __codegen_problem__ = {}
 
 
-@jit_class
 class CodegenProblem(Problem):
     def __init__(self, config):
         super().__init__()
