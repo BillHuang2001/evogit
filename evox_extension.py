@@ -4,6 +4,7 @@ import logging
 import weakref
 
 from evox.core import Problem, jit_class, ModuleBase
+from evox.operators.mutation import polynomial_mutation
 import torch
 
 from phylox import api
@@ -116,6 +117,26 @@ def llm_crossover(config, llm_backend, pop):
     pop = pop[mating_pool, :]
     return phylox_llm_crossover(config, llm_backend, seeds, pop)
 
+def load_vectors(config, pop):
+    commits = [array_to_hex(commit) for commit in pop]
+    vectors = api.load_vectors(config, commits)
+    return torch.from_numpy(vectors)
+
+def proxy_vector_mutation(config, pop):
+    commits = [array_to_hex(commit) for commit in pop]
+
+    def mut_func(x):
+        x = torch.from_numpy(x)
+        pop_size, dim = x.shape
+        # pro_m = 0.1 * dim
+        # x = polynomial_mutation(x, lb=-10, ub=10, pro_m=pro_m)
+        x = x + torch.normal(0, 0.1, size=x.shape)
+        return x.numpy()
+
+    new_commits = api.vector_mutation(config, commits, mut_func)
+    offspring = [hex_to_array(commit) for commit in new_commits]
+    return torch.stack(offspring)
+
 
 __config__ = {}
 __llm_backend__ = {}
@@ -173,7 +194,7 @@ class LLMCrossover(ModuleBase):
             __llm_backend__[instance_id] = config.llm_backend
             weakref.finalize(self, __llm_backend__.pop, instance_id, None)
 
-    @torch.jit.ignore
+    @torch.compile.disable
     def do(self, pop):
         config = __config__[self._index_id_]
         llm_backend = __llm_backend__[self._index_id_]
@@ -218,10 +239,23 @@ class CodegenProblem(Problem):
         global __codegen_problem__
         __codegen_problem__[self._index_id_] = (config, pool)
 
-    @torch.jit.ignore
+    @torch.compile.disable
     def evaluate(self, population):
         config, pool = __codegen_problem__[self._index_id_]
         return evaluate(config, pool, population)
+
+
+@jit_class
+class MnistProblem(Problem):
+    def __init__(self, config):
+        super().__init__()
+        self.config = config
+
+    def evaluate(self, population):
+        density = torch.sum(population, dim=1) / population.shape[1]
+        goodness = torch.ones((population.shape[0], ))
+        fitness = torch.stack((density, goodness), dim=1)
+        return fitness
 
 
 def init_population(config, pop_size):
