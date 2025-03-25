@@ -6,7 +6,6 @@ import subprocess
 import os
 import shutil
 import tempfile
-import uuid
 from phylox.config import PhyloXConfig
 from typing import Optional, Union
 import re
@@ -354,7 +353,7 @@ def read_file(config: PhyloXConfig, commit: str, mode: str = "text") -> str:
     if mode == "text":
         return completed_proc.stdout.decode("utf-8")
     elif mode == "binary":
-        return completed_proc.stdout
+        return completed_proc.stdout.decode("utf-8")
     else:
         raise ValueError("mode must be either 'text' or 'binary'.")
 
@@ -458,7 +457,7 @@ def rebase_branches(config: PhyloXConfig, commit: str) -> None:
     subprocess.run(
         ["git", "rebase", "-q", commit],
         cwd=config.git_dir,
-        env=os.environb | {"GIT_EDITOR": "true"},
+        env=os.environ | {"GIT_EDITOR": "true"},
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,
     )
@@ -469,7 +468,7 @@ def continue_merge(config: PhyloXConfig) -> None:
     subprocess.run(
         ["git", "merge", "--continue"],
         cwd=config.git_dir,
-        env=os.environb | {"GIT_EDITOR": "true"},
+        env=os.environ | {"GIT_EDITOR": "true"},
         check=True,
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,
@@ -483,7 +482,7 @@ def continue_rebase(config: PhyloXConfig) -> None:
     subprocess.run(
         ["git", "rebase", "--continue"],
         cwd=config.git_dir,
-        env=os.environb | {"GIT_EDITOR": "true"},
+        env=os.environ | {"GIT_EDITOR": "true"},
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,
     )
@@ -612,8 +611,8 @@ def pairwise_shared_merge_base_distances(
 
 
 def push_to_remote(
-    config: PhyloXConfig, branches: list[str], async_push: str = True
-) -> None:
+    config: PhyloXConfig, branches: list[str], async_push: bool = True
+) -> subprocess.Popen | None:
     """Push the branch to the remote repository along side with the notes."""
     cmd = ["git", "push", "-q", "-f", "--atomic", "origin"]
     cmd += branches
@@ -636,7 +635,7 @@ def push_to_remote(
         )
 
 
-def push_notes_to_remote(config: PhyloXConfig, async_push: str = True) -> None:
+def push_notes_to_remote(config: PhyloXConfig, async_push: bool = True) -> subprocess.Popen | None:
     """Push the notes to the remote repository."""
     remote_notes_namespace = f"refs/notes/{config.hostname}-commits"
     cmd = [
@@ -666,8 +665,8 @@ def push_notes_to_remote(config: PhyloXConfig, async_push: str = True) -> None:
 
 
 def fetch_from_remote(
-    config: PhyloXConfig, prune=True, async_fetch: str = True
-) -> None:
+    config: PhyloXConfig, prune=True, async_fetch: bool = True
+) -> subprocess.Popen | None:
     """Fetch the notes from the remote repository."""
     cmd = ["git", "fetch", "-q"]
     if prune:
@@ -716,7 +715,7 @@ def merge_notes(config: PhyloXConfig) -> None:
         )
 
 
-def fetch_notes_from_remote(config: PhyloXConfig, async_fetch: str = True) -> None:
+def fetch_notes_from_remote(config: PhyloXConfig, async_fetch: bool = True) -> subprocess.Popen | None:
     """Fetch the notes from the remote repository."""
     cmd = ["git", "fetch", "-q", "origin", "refs/notes/*:refs/notes/*"]
 
