@@ -194,7 +194,7 @@ class LLMCrossover(ModuleBase):
             __llm_backend__[instance_id] = config.llm_backend
             weakref.finalize(self, __llm_backend__.pop, instance_id, None)
 
-    @torch.compile.disable
+    @torch.compiler.disable
     def do(self, pop):
         config = __config__[self._index_id_]
         llm_backend = __llm_backend__[self._index_id_]
@@ -239,21 +239,20 @@ class CodegenProblem(Problem):
         global __codegen_problem__
         __codegen_problem__[self._index_id_] = (config, pool)
 
-    @torch.compile.disable
-    def evaluate(self, population):
+    @torch.compiler.disable
+    def evaluate(self, pop):
         config, pool = __codegen_problem__[self._index_id_]
-        return evaluate(config, pool, population)
+        return evaluate(config, pool, pop)
 
 
-@jit_class
 class MnistProblem(Problem):
     def __init__(self, config):
         super().__init__()
         self.config = config
 
-    def evaluate(self, population):
-        density = torch.sum(population, dim=1) / population.shape[1]
-        goodness = torch.ones((population.shape[0], ))
+    def evaluate(self, pop):
+        density = torch.sum(pop, dim=1) / pop.shape[1]
+        goodness = torch.ones((pop.shape[0], ))
         fitness = torch.stack((density, goodness), dim=1)
         return fitness
 
@@ -276,7 +275,7 @@ class MigrateHelper:
 
             if commit:
                 self.logger.info(f"Found commit by human: {commit}")
-                return True, torch.array([hex_to_array(commit[0])]), fitness
+                return True, torch.tensor([hex_to_array(commit[0])]), fitness
 
         return False, torch.empty(
             (1, HASH_BYTE_LENGTH[self.config.git_hash]), dtype=torch.uint8
