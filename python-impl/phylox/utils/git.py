@@ -150,8 +150,8 @@ def clone_git_repo(config: PhyloXConfig) -> None:
 
 def config_merge_driver(config: PhyloXConfig) -> None:
     template = (
-        "[merge {name}]"
-        "\tname = phylox custom merge driver"
+        "[merge \"{name}\"]\n"
+        "\tname = phylox custom merge driver\n"
         "\tdriver = {path} %O %A %B\n"
     )
     if config.merge_driver is not None:
@@ -161,6 +161,9 @@ def config_merge_driver(config: PhyloXConfig) -> None:
                     name="phylox-custom-merge-driver", path=config.merge_driver
                 )
             )
+
+        with open(os.path.join(config.git_dir, ".gitattributes"), "a") as f:
+            f.write("*.npy merge=phylox-custom-merge-driver\n")
 
 
 def get_commit_by_branch(config: PhyloXConfig, branch: str) -> str:
