@@ -1,3 +1,16 @@
 /venv
 /elixir-impl
+/log
+/secrets
+/seeds
 __pycache__
+main.ipynb
+main.py
+plot.py
+/data
+/config
+/experiments
+.venv
+venv_old
+/figures
+/datasets
