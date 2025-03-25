@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Optional, Any
+from typing import Optional, Any, Callable
 
 
 @dataclass
@@ -26,8 +26,8 @@ class PhyloXConfig:
     reevaluate: bool
     enable_sandbox: bool
     timeout: int
-    prompt_constructor: callable
-    respond_extractor: callable
+    prompt_constructor: Callable
+    respond_extractor: Callable
     max_merge_retry: int
     remote_repo: Optional[str]
     hostname: Optional[str]

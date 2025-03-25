@@ -5,7 +5,7 @@ import os
 import subprocess
 from collections import namedtuple
 from pathlib import Path
-from typing import Any
+from typing import Any, Tuple
 import random
 
 import numpy as np
@@ -79,7 +79,7 @@ def get_initial_branches(config: PhyloXConfig, pop_size: int) -> list[str]:
     return pop
 
 
-def push_local_branches(config: PhyloXConfig) -> None:
+def push_local_branches(config: PhyloXConfig) -> Tuple[subprocess.Popen | None, subprocess.Popen | None]:
     """Push all branches to the remote"""
     branches = git.list_branches(config)
     proc1 = git.push_notes_to_remote(config)
@@ -87,19 +87,19 @@ def push_local_branches(config: PhyloXConfig) -> None:
     return proc1, proc2
 
 
-def fetch_remote(config: PhyloXConfig) -> None:
+def fetch_remote(config: PhyloXConfig) -> Tuple[subprocess.Popen | None, subprocess.Popen | None]:
     """Fetch remote branches and notes"""
     proc1 = git.fetch_from_remote(config)
     proc2 = git.fetch_notes_from_remote(config)
     return proc1, proc2
 
 
-def prepare_temp_worktrees(config: PhyloXConfig, commits: list[str]) -> None:
+def prepare_temp_worktrees(config: PhyloXConfig, commits: list[str]) -> list[str]:
     worktrees = [git.add_temp_worktree(config, commit) for commit in commits]
     return worktrees
 
 
-def cleanup_temp_worktrees(config: PhyloXConfig) -> str:
+def cleanup_temp_worktrees(config: PhyloXConfig) -> None:
     git.cleanup_temp_worktrees(config)
 
 
@@ -159,7 +159,6 @@ def evaluate_code(config: PhyloXConfig, commit: str, worktree) -> dict[str, str]
         }
 
     logger.info(f"Evaluated {commit}\n")
-    logger.info(f"Result: {note}\n")
     return result
 
 

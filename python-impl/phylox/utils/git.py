@@ -341,7 +341,7 @@ def update_file(
     )
 
 
-def read_file(config: PhyloXConfig, commit: str, mode: str = "text") -> str:
+def read_file(config: PhyloXConfig, commit: str, mode: str = "text") -> str | bytes:
     """Read the content of the file in the specified commit."""
     completed_proc = subprocess.run(
         ["git", "show", f"{commit}:{config.filename}"],
@@ -353,7 +353,7 @@ def read_file(config: PhyloXConfig, commit: str, mode: str = "text") -> str:
     if mode == "text":
         return completed_proc.stdout.decode("utf-8")
     elif mode == "binary":
-        return completed_proc.stdout.decode("utf-8")
+        return completed_proc.stdout
     else:
         raise ValueError("mode must be either 'text' or 'binary'.")
 
