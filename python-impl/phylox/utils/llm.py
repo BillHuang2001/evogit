@@ -121,6 +121,10 @@ class TGIBackend:
 
     def _one_restful_request(self, args):
         seed, query = args
+        if len(query) > 30_000: # roughly less than 20,000 tokens
+            query = query[:30_000]
+            self.logger.warning("Query too long, truncated to 30,000 characters.")
+
         headers = {
             "Content-Type": "application/json",
             "Authorization": "Bearer " + self.api_key,
