@@ -338,8 +338,7 @@ def llm_crossover(config, llm_backend, seeds, commits) -> list[str]:
     return offspring
 
 
-def vector_mutation(config: PhyloXConfig, seed: int, commits: list[str]) -> str:
-    """Mutation of the individual"""
+def load_vectors(config: PhyloXConfig, commits: list[str]) -> np.ndarray:
     vectors = []
     for commit in commits:
         binary_data = git.read_file(config, commit, mode="binary")
@@ -347,15 +346,21 @@ def vector_mutation(config: PhyloXConfig, seed: int, commits: list[str]) -> str:
             vector = np.load(f)
             vectors.append(vector)
 
-    vectors = np.array(vectors)
-    mutated_vectors = vectors
-    output_binaries = []
-    for vector in mutated_vectors:
+    return np.array(vectors)
+
+
+def vector_mutation(config: PhyloXConfig, commits: list[str], mutation_func: callable) -> str:
+    """Mutation of the individual"""
+    vectors = load_vectors(config, commits)
+    mutated_vectors = mutation_func(vectors)
+    offspring = []
+    for commit, vector in zip(commits, mutated_vectors):
         with io.BytesIO() as f:
             np.save(f, vector)
-            output_binaries.append(f.getvalue())
-    git.update_file(config, commit, mutated_vectors, "Mutation")
-    return git.read_head_commit(config)
+            git.update_file(config, commit, f.getvalue(), "Mutation")
+            offspring.append(git.read_head_commit(config))
+
+    return offspring
 
 
 def vector_direct_crossover(config: PhyloXConfig, seed: int, commits: list[str]) -> str:
