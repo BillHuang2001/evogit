@@ -149,7 +149,7 @@ def clone_git_repo(config: PhyloXConfig) -> None:
 
 def config_merge_driver(config: PhyloXConfig) -> None:
     template = (
-        "[merge \"{name}\"]\n"
+        '[merge "{name}"]\n'
         "\tname = phylox custom merge driver\n"
         "\tdriver = {path} %O %A %B\n"
     )
@@ -635,7 +635,9 @@ def push_to_remote(
         )
 
 
-def push_notes_to_remote(config: PhyloXConfig, async_push: bool = True) -> subprocess.Popen | None:
+def push_notes_to_remote(
+    config: PhyloXConfig, async_push: bool = True
+) -> subprocess.Popen | None:
     """Push the notes to the remote repository."""
     remote_notes_namespace = f"refs/notes/{config.hostname}-commits"
     cmd = [
@@ -715,7 +717,9 @@ def merge_notes(config: PhyloXConfig) -> None:
         )
 
 
-def fetch_notes_from_remote(config: PhyloXConfig, async_fetch: bool = True) -> subprocess.Popen | None:
+def fetch_notes_from_remote(
+    config: PhyloXConfig, async_fetch: bool = True
+) -> subprocess.Popen | None:
     """Fetch the notes from the remote repository."""
     cmd = ["git", "fetch", "-q", "origin", "refs/notes/*:refs/notes/*"]
 
@@ -734,6 +738,17 @@ def fetch_notes_from_remote(config: PhyloXConfig, async_fetch: bool = True) -> s
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
         )
+
+
+def diff_view(config: PhyloXConfig, commit1: str, commit2: str) -> None:
+    """View the diff between two commits."""
+    diff = subprocess.run(
+        ["git", "diff", "--no-color", commit1, commit2],
+        cwd=config.git_dir,
+        check=True,
+        capture_output=True,
+    ).stdout.decode("utf-8")
+    return diff
 
 
 def prune(config: PhyloXConfig) -> None:
