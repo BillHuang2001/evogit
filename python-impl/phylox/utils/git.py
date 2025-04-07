@@ -99,7 +99,11 @@ def init_git_repo(config: PhyloXConfig) -> None:
     subprocess.run(
         ["git", "config", "user.email", config.git_user_email], cwd=git_dir, check=True
     )
-    shutil.copy(config.seed_file, os.path.join(git_dir, config.filename))
+    if os.path.isdir(config.seed_file):
+        shutil.copytree(config.seed_file, git_dir)
+    else:
+        shutil.copy(config.seed_file, os.path.join(git_dir, config.filename))
+
     subprocess.run(["git", "add", "."], cwd=git_dir, check=True)
     subprocess.run(["git", "commit", "-q", "-m", "init"], cwd=git_dir, check=True)
     # disable auto gc, since we will run it manually at the end of each evaluation
