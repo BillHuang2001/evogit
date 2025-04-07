@@ -79,7 +79,9 @@ def get_initial_branches(config: PhyloXConfig, pop_size: int) -> list[str]:
     return pop
 
 
-def push_local_branches(config: PhyloXConfig) -> Tuple[subprocess.Popen | None, subprocess.Popen | None]:
+def push_local_branches(
+    config: PhyloXConfig,
+) -> Tuple[subprocess.Popen | None, subprocess.Popen | None]:
     """Push all branches to the remote"""
     branches = git.list_branches(config)
     proc1 = git.push_notes_to_remote(config)
@@ -87,7 +89,9 @@ def push_local_branches(config: PhyloXConfig) -> Tuple[subprocess.Popen | None, 
     return proc1, proc2
 
 
-def fetch_remote(config: PhyloXConfig) -> Tuple[subprocess.Popen | None, subprocess.Popen | None]:
+def fetch_remote(
+    config: PhyloXConfig,
+) -> Tuple[subprocess.Popen | None, subprocess.Popen | None]:
     """Fetch remote branches and notes"""
     proc1 = git.fetch_from_remote(config)
     proc2 = git.fetch_notes_from_remote(config)
@@ -204,28 +208,28 @@ def is_novel_merge(config: PhyloXConfig, commit1: str, commit2: str) -> bool:
 
 def git_crossover(config: PhyloXConfig, seed: int, commit1: str, commit2: str) -> str:
     """crossover between commit1 and commit2"""
-    rng = np.random.default_rng(seed)
-    use_merge = rng.choice([True, False], p=[config.merge_prob, 1 - config.merge_prob])
+    random.seed(seed)
+    use_merge = random.choices([True, False], weights=[config.merge_prob, 1 - config.merge_prob])[0]
     if use_merge:
-        git_merge(config, rng, commit1, commit2)
+        git_merge(config, commit1, commit2)
     else:
-        git_rebase(config, rng, commit1, commit2)
+        git_rebase(config, commit1, commit2)
 
     return git.read_head_commit(config)
 
 
 def git_merge(
-    config: PhyloXConfig, rng: np.random.Generator, commit1: str, commit2: str
+    config: PhyloXConfig, commit1: str, commit2: str
 ) -> None:
     git.checkout(config, commit1)
     git.merge_branches(config, commit2)
 
     if git.has_conflict(config):
         count = git.count_conflicts(config)
-        strategy = rng.choice(
+        strategy = random.choices(
             [True, False],
-            size=(count,),
-            p=[config.accept_ours_prob, 1 - config.accept_ours_prob],
+            weights=[config.accept_ours_prob, 1 - config.accept_ours_prob],
+            k=count,
         )
         git.handle_conflict(config, strategy)
         git.continue_merge(config)
@@ -234,17 +238,17 @@ def git_merge(
 
 
 def git_rebase(
-    config: PhyloXConfig, rng: np.random.Generator, commit1: str, commit2: str
+    config: PhyloXConfig, commit1: str, commit2: str
 ) -> None:
     git.checkout(config, commit1)
     git.rebase_branches(config, commit2)
 
     while git.has_conflict(config):
         count = git.count_conflicts(config)
-        strategy = rng.choice(
+        strategy = random.choices(
             [True, False],
-            size=(count,),
-            p=[config.accept_ours_prob, 1 - config.accept_ours_prob],
+            weights=[config.accept_ours_prob, 1 - config.accept_ours_prob],
+            k=count,
         )
         git.handle_conflict(config, strategy)
         git.continue_rebase(config)
@@ -323,6 +327,10 @@ def llm_mutation(config, llm_backend, seeds, commits) -> list[str]:
     return offspring
 
 
+def llm_constrained_mutation(config, llm_backend, seeds, commits) -> list[str]:
+    """Randomly select a file and a section within the file and let the llm to mutate the code."""
+
+
 def llm_crossover(config, llm_backend, seeds, commits) -> list[str]:
     prompts = _construct_prompt(config, commits, 2, "crossover")
 
@@ -348,7 +356,9 @@ def load_vectors(config: PhyloXConfig, commits: list[str]) -> np.ndarray:
     return np.array(vectors)
 
 
-def vector_mutation(config: PhyloXConfig, commits: list[str], mutation_func: callable) -> str:
+def vector_mutation(
+    config: PhyloXConfig, commits: list[str], mutation_func: callable
+) -> str:
     """Mutation of the individual"""
     vectors = load_vectors(config, commits)
     mutated_vectors = mutation_func(vectors)
@@ -413,3 +423,9 @@ def migrate_from_other_hosts(config: PhyloXConfig, migration_count: int) -> list
 def prune_commits(config: PhyloXConfig) -> None:
     """Prune the commits that are reachable."""
     git.prune(config)
+
+
+def llm_diff_compare(config: PhyloXConfig, prev_commit, new_commit) -> bool:
+    """Return True if the change from prev_commit to new_commit is good, and False otherwise"""
+    diff_view = git.diff_view(config, prev_commit, new_commit)
+    return True
