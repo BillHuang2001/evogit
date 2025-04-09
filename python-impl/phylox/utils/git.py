@@ -381,12 +381,29 @@ def has_conflict(config: PhyloXConfig) -> bool:
         return False
 
 
-def count_conflicts(config: PhyloXConfig) -> int:
+def count_conflicts(config: PhyloXConfig, filename: Optional[str] = None) -> int:
     """Count the number of conflicts in the current working directory."""
-    with open(os.path.join(config.git_dir, config.filename), "r") as f:
+    if filename is None:
+        filename = config.filename
+
+    with open(os.path.join(config.git_dir, filename), "r") as f:
         content = f.read()
 
     return len(git_conflict_pattern.findall(content))
+
+
+def list_conflict_files(config: PhyloXConfig) -> list[str]:
+    """List all the files that have conflicts in the current working directory."""
+    result = subprocess.run(
+        ["git", "diff", "--name-only", "--diff-filter=U"],
+        cwd=config.git_dir,
+        capture_output=True,
+        check=True,
+    ).stdout.decode("utf-8")
+
+    conflict_files = [file for file in result.split("\n") if file != ""]
+
+    return conflict_files
 
 
 def checkout(config: PhyloXConfig, commit: str) -> None:
@@ -495,12 +512,17 @@ def continue_rebase(config: PhyloXConfig) -> None:
     )
 
 
-def handle_conflict(config: PhyloXConfig, strategy: list[bool]) -> None:
+def handle_conflict(
+    config: PhyloXConfig, strategy: list[bool], filename: Optional[str] = None
+) -> None:
     """Handle the conflict by accept ours or theirs.
     The strategy is a list of bool values, where True means accepting ours, and False means accepting theirs.
     Write back the result to the file and git add.
     """
-    with open(os.path.join(config.git_dir, config.filename), "r") as f:
+    if filename is None:
+        filename = config.filename
+
+    with open(os.path.join(config.git_dir, filename), "r") as f:
         content = f.read()
 
     iterator = iter(strategy)
@@ -513,10 +535,10 @@ def handle_conflict(config: PhyloXConfig, strategy: list[bool]) -> None:
             return match.group(2)
 
     result = git_conflict_pattern.sub(handle_one_conflict, content)
-    with open(os.path.join(config.git_dir, config.filename), "w") as f:
+    with open(os.path.join(config.git_dir, filename), "w") as f:
         f.write(result)
 
-    subprocess.run(["git", "add", config.filename], cwd=config.git_dir, check=True)
+    subprocess.run(["git", "add", filename], cwd=config.git_dir, check=True)
 
 
 def branches_track_commits(
