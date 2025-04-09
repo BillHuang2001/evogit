@@ -92,6 +92,7 @@ class TGIBackend:
         self,
         base_url: str = "http://127.0.0.1:8080",
         http_req_params: dict = {},
+        max_tokens=10000,
         num_workers=4,
         model="",
         api_key="-",
@@ -118,11 +119,12 @@ class TGIBackend:
         self.extra_args = extra_args
         self.api_key = api_key
         self.model = model
+        self.max_tokens = max_tokens
 
     def _one_restful_request(self, args):
         seed, query = args
-        if len(query) > 30_000: # roughly less than 20,000 tokens
-            query = query[:30_000]
+        if len(query) > 1_000_000:
+            query = query[:1_000_000]
             self.logger.warning("Query too long, truncated to 30,000 characters.")
 
         headers = {
@@ -140,7 +142,7 @@ class TGIBackend:
             "stream": False,
             "model": self.model,
             "seed": seed,
-            "max_tokens": 10000,
+            "max_tokens": self.max_tokens,
         }
         data = data | self.extra_args
         for retry in range(self.num_retry):
