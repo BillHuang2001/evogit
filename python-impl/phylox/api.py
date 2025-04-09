@@ -11,7 +11,7 @@ import random
 import numpy as np
 
 from .config import PhyloXConfig
-from .utils import git, llm
+from .utils import git, llm, prompt
 
 logger = logging.getLogger("phylox")
 
@@ -209,7 +209,9 @@ def is_novel_merge(config: PhyloXConfig, commit1: str, commit2: str) -> bool:
 def git_crossover(config: PhyloXConfig, seed: int, commit1: str, commit2: str) -> str:
     """crossover between commit1 and commit2"""
     random.seed(seed)
-    use_merge = random.choices([True, False], weights=[config.merge_prob, 1 - config.merge_prob])[0]
+    use_merge = random.choices(
+        [True, False], weights=[config.merge_prob, 1 - config.merge_prob]
+    )[0]
     if use_merge:
         git_merge(config, commit1, commit2)
     else:
@@ -218,9 +220,7 @@ def git_crossover(config: PhyloXConfig, seed: int, commit1: str, commit2: str) -
     return git.read_head_commit(config)
 
 
-def git_merge(
-    config: PhyloXConfig, commit1: str, commit2: str
-) -> None:
+def git_merge(config: PhyloXConfig, commit1: str, commit2: str) -> None:
     git.checkout(config, commit1)
     git.merge_branches(config, commit2)
 
@@ -237,9 +237,7 @@ def git_merge(
     assert not git.has_conflict(config)
 
 
-def git_rebase(
-    config: PhyloXConfig, commit1: str, commit2: str
-) -> None:
+def git_rebase(config: PhyloXConfig, commit1: str, commit2: str) -> None:
     git.checkout(config, commit1)
     git.rebase_branches(config, commit2)
 
@@ -327,8 +325,79 @@ def llm_mutation(config, llm_backend, seeds, commits) -> list[str]:
     return offspring
 
 
+def _gather_info(config, commits) -> list[dict[str, Any]]:
+    worktrees = prepare_temp_worktrees(config, commits)
+    infos = []
+    for commit, worktree in zip(commits, worktrees):
+        file_list = git.list_files(config, commit)
+        files = [file for file in file_list.split("\n") if file != ""]
+        text_file_extensions = ["js", "jsx", "ts", "tsx", "html", "css", "scss", "json"]
+        text_files = [
+            file for file in files if file.split(".")[-1] in text_file_extensions
+        ]
+        random_file = random.choice(text_files)
+        random_file_path = os.path.join(worktree, random_file)
+        with open(random_file_path, "r") as f:
+            print(f"Reading {random_file_path}")
+            code = f.read()
+        code = code.split("\n")
+        n_lines = len(code)
+        random_section_start = random.randint(0, n_lines - 1)
+        random_section_end = random.randint(
+            random_section_start, min(random_section_start + 50, n_lines)
+        )
+        infos.append(
+            {
+                "commit": commit,
+                "worktree": worktree,
+                "file_list": file_list,
+                "random_file": random_file,
+                "code": code,
+                "random_section_start": random_section_start,
+                "random_section_end": random_section_end,
+                "n_lines": n_lines,
+            }
+        )
+
+    return infos
+
+
 def llm_constrained_mutation(config, llm_backend, seeds, commits) -> list[str]:
     """Randomly select a file and a section within the file and let the llm to mutate the code."""
+    infos = _gather_info(config, commits)
+    prompts = []
+    for info in infos:
+        # insert <|EDIT|> and <|END_EDIT|> to the code
+        # insert end first, so that the indices are not changed
+        prompt_code = info["code"][:]
+        prompt_code.insert(info["random_section_end"], "<|END_EDIT|>")
+        prompt_code.insert(info["random_section_start"], "<|EDIT|>")
+        prompt_code = "\n".join(prompt_code)
+        prompt_text = config.prompt_constructor(info["file_list"], prompt_code)
+        prompts.append(prompt_text)
+
+    responses = llm_backend.query(seeds, prompts)
+    responses = [config.respond_extractor(response) for response in responses]
+    code_changes = [responses[0] for responses in responses]
+    commit_messages = [responses[1] for responses in responses]
+    # update the code with the code changes
+    edited_codes = []
+    for info, code_change, commit_message in zip(infos, code_changes, commit_messages):
+        edited_code = info["code"][:]
+        start = info["random_section_start"]
+        end = info["random_section_end"]
+        edited_code[start:end] = [code_change]
+        edited_code = "\n".join(edited_code)
+        git.update_file(
+            config,
+            info["commit"],
+            edited_code,
+            f"{config.llm_name}: {commit_message}",
+        )
+        edited_codes.append(git.read_head_commit(config))
+
+    cleanup_temp_worktrees(config)
+    return edited_codes
 
 
 def llm_crossover(config, llm_backend, seeds, commits) -> list[str]:
@@ -425,7 +494,32 @@ def prune_commits(config: PhyloXConfig) -> None:
     git.prune(config)
 
 
-def llm_diff_compare(config: PhyloXConfig, prev_commit, new_commit) -> bool:
+def _construct_diff_comp_prompt(config, prev_commit, new_commit) -> str:
+    """A helper function to construct the prompt.
+    Read the code and the related information (e.g. stack_trace) from the a list of commits.
+    Then feed into the prompt constructor.
+    The operation_type is either "mutation" or "crossover".
+    The prompt_constructor is a function with the following signature:
+    def prompt_constructor(operation_type: str, code_infos: List[CodeInfo]) -> str
+    """
+    diff = git.diff_view(config, prev_commit, new_commit)
+    prev_file_list = git.list_files(config, prev_commit)
+    prev_info = git.read_note(config, prev_commit)
+    new_info = git.read_note(config, new_commit)
+    prompt = config.diff_prompt_constructor(prev_file_list, diff, prev_info, new_info)
+    return prompt
+
+
+def llm_diff_compare(config: PhyloXConfig, prev_commit: str, new_commit: str) -> bool:
     """Return True if the change from prev_commit to new_commit is good, and False otherwise"""
-    diff_view = git.diff_view(config, prev_commit, new_commit)
-    return True
+    prompt = _construct_diff_comp_prompt(config, prev_commit, new_commit)
+    response = llm.query(prompt)
+    if "good" in response.lower():
+        return True
+    elif "bad" in response.lower():
+        return False
+    else:
+        logger.warning(
+            f"Unknown response from LLM: {response}. " "Assuming the change is bad."
+        )
+        return False
