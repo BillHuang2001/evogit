@@ -234,7 +234,8 @@ def git_merge(config: PhyloXConfig, commit1: str, commit2: str) -> None:
                 k=count,
             )
             git.handle_conflict(config, strategy, file)
-            git.continue_merge(config)
+
+        git.continue_merge(config)
 
     assert not git.has_conflict(config)
 
