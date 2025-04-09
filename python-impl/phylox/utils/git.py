@@ -755,6 +755,26 @@ def diff_view(config: PhyloXConfig, commit1: str, commit2: str) -> None:
     return diff
 
 
+def list_files(
+    config: PhyloXConfig, commit: str, return_format: str = "string"
+) -> list[str]:
+    """List all the files in the specified commit."""
+    files = subprocess.run(
+        ["git", "ls-tree", "-r", "--name-only", commit],
+        cwd=config.git_dir,
+        check=True,
+        capture_output=True,
+    ).stdout.decode("utf-8")
+    if return_format == "string":
+        return files
+    elif return_format == "list":
+        files = files.split("\n")
+        files = [file.strip() for file in files if file != ""]
+        return files
+    else:
+        raise ValueError("return_format must be either 'string' or 'list'.")
+
+
 def prune(config: PhyloXConfig) -> None:
     """Run git prune."""
     gc_log = os.path.join(config.git_dir, ".git", "gc.log")
