@@ -89,7 +89,7 @@ def git_crossover(config, pop):
 
 
 def evogit_mutation(config, llm_backend, pop):
-    seeds = torch.randint(0, 2 << 31, (pop.shape[0],))
+    seeds = [random.randint(0, 2 << 31) for _ in range(pop.shape[0])]
     commits = [array_to_hex(ind) for ind in pop]
     new_commits = api.llm_constrained_mutation(config, llm_backend, seeds, commits)
     offspring = [hex_to_array(new_commit) for new_commit in new_commits]
