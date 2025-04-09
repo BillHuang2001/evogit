@@ -225,14 +225,16 @@ def git_merge(config: PhyloXConfig, commit1: str, commit2: str) -> None:
     git.merge_branches(config, commit2)
 
     if git.has_conflict(config):
-        count = git.count_conflicts(config)
-        strategy = random.choices(
-            [True, False],
-            weights=[config.accept_ours_prob, 1 - config.accept_ours_prob],
-            k=count,
-        )
-        git.handle_conflict(config, strategy)
-        git.continue_merge(config)
+        conflicted_files = git.list_conflict_files(config)
+        for file in conflicted_files:
+            count = git.count_conflicts(config, file)
+            strategy = random.choices(
+                [True, False],
+                weights=[config.accept_ours_prob, 1 - config.accept_ours_prob],
+                k=count,
+            )
+            git.handle_conflict(config, strategy, file)
+            git.continue_merge(config)
 
     assert not git.has_conflict(config)
 
