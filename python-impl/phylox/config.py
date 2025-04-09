@@ -28,6 +28,7 @@ class PhyloXConfig:
     timeout: int
     prompt_constructor: Callable
     respond_extractor: Callable
+    diff_prompt_constructor: Callable
     max_merge_retry: int
     remote_repo: Optional[str]
     hostname: Optional[str]
