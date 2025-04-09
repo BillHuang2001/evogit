@@ -331,7 +331,10 @@ def _gather_info(config, commits) -> list[dict[str, Any]]:
     for commit, worktree in zip(commits, worktrees):
         file_list = git.list_files(config, commit)
         files = [file for file in file_list.split("\n") if file != ""]
-        text_file_extensions = ["js", "jsx", "ts", "tsx", "html", "css", "scss", "json"]
+        # technically, json files are also text files
+        # but json files are usually config files or data files
+        # so we don't want to mutate them
+        text_file_extensions = ["js", "jsx", "ts", "tsx", "html", "css", "scss"]
         text_files = [
             file for file in files if file.split(".")[-1] in text_file_extensions
         ]
@@ -372,7 +375,9 @@ def llm_constrained_mutation(config, llm_backend, seeds, commits) -> list[str]:
         prompt_code.insert(info["random_section_end"], "<|END_EDIT|>")
         prompt_code.insert(info["random_section_start"], "<|EDIT|>")
         prompt_code = "\n".join(prompt_code)
-        prompt_text = config.prompt_constructor(info["file_list"], prompt_code)
+        prompt_text = config.prompt_constructor(
+            info["file_list"], info["random_file"], prompt_code
+        )
         prompts.append(prompt_text)
 
     responses = llm_backend.query(seeds, prompts)
@@ -392,6 +397,7 @@ def llm_constrained_mutation(config, llm_backend, seeds, commits) -> list[str]:
             info["commit"],
             edited_code,
             f"{config.llm_name}: {commit_message}",
+            filename=info["random_file"],
         )
         edited_codes.append(git.read_head_commit(config))
 
@@ -509,16 +515,25 @@ def _construct_diff_comp_prompt(config, prev_commit, new_commit) -> str:
     return prompt
 
 
-def llm_diff_compare(config: PhyloXConfig, prev_commit: str, new_commit: str) -> bool:
+def llm_diff_compare(
+    config: PhyloXConfig, llm_backend: Any, seeds: list[int], prev_commits: list[str], new_commits: list[str]
+) -> list[bool]:
     """Return True if the change from prev_commit to new_commit is good, and False otherwise"""
-    prompt = _construct_diff_comp_prompt(config, prev_commit, new_commit)
-    response = llm.query(prompt)
-    if "good" in response.lower():
-        return True
-    elif "bad" in response.lower():
-        return False
-    else:
-        logger.warning(
-            f"Unknown response from LLM: {response}. " "Assuming the change is bad."
-        )
-        return False
+    prompts = []
+    for prev_commit, new_commit in zip(prev_commits, new_commits):
+        prompt = _construct_diff_comp_prompt(config, prev_commit, new_commit)
+        prompts.append(prompt)
+    responses = llm_backend.query(seeds, prompts)
+    result = []
+    for response in responses:
+        if "good" in response.lower():
+            result.append(True)
+        elif "bad" in response.lower():
+            result.append(False)
+        else:
+            logger.warning(
+                f"Unknown response from LLM: {response}. " "Assuming the change is bad."
+            )
+            result.append(False)
+
+    return result

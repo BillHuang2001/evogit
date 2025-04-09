@@ -273,16 +273,16 @@ class EvoGitProblem(Problem):
     def __init__(self, config):
         super().__init__()
         self.config = config
+        self.llm_backend = config.llm_backend
 
     def evaluate(self, pop):
         prev, new = pop
+        prev = [array_to_hex(commit) for commit in prev]
+        new = [array_to_hex(commit) for commit in new]
         # compare the previous and new commits
         # return True if the new commit is better than the previous one
-        result = []
-        for p, n in zip(prev, new):
-            p = array_to_hex(p)
-            n = array_to_hex(n)
-            result.append(api.llm_diff_compare(self.config, p, n))
+        seeds = [random.randint(0, 2 << 31) for _ in range(len(prev))]
+        result = api.llm_diff_compare(self.config, self.llm_backend, seeds, prev, new)
         result = torch.tensor(result)
         return result
 

@@ -313,12 +313,15 @@ def update_file(
     commit: str,
     new_content: Union[str, bytes],
     commit_message: str,
+    filename: Optional[str] = None,
 ) -> None:
     """Update the content of the file in the specified commit_id and commit the updated file.
     new_content can be either a string or bytes,
     when it is a string, it will be written in text mode, otherwise, it will be written in binary mode.
     """
     checkout(config, commit)
+
+    filename = filename if filename is not None else config.filename
 
     if isinstance(new_content, str):
         mode = "r+"
@@ -327,7 +330,7 @@ def update_file(
     else:
         raise ValueError("new_content must be either a string or bytes.")
 
-    with open(os.path.join(config.git_dir, config.filename), mode) as f:
+    with open(os.path.join(config.git_dir, filename), mode) as f:
         current_content = f.read()
         # if the content is the same, do nothing
         if current_content == new_content:
@@ -337,7 +340,7 @@ def update_file(
         f.write(new_content)
         f.truncate()
 
-    subprocess.run(["git", "add", config.filename], cwd=config.git_dir, check=True)
+    subprocess.run(["git", "add", filename], cwd=config.git_dir, check=True)
     commit_message = git_commit_message_pattern.sub("", commit_message)
     commit_message = commit_message[:256]  # truncate the message to 256 characters
     subprocess.run(
