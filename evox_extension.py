@@ -6,6 +6,7 @@ import weakref
 from evox.core import Problem, ModuleBase
 from evox.operators.mutation import polynomial_mutation
 import torch
+import random
 
 from phylox import api
 
@@ -55,12 +56,12 @@ def git_update(config, generation):
         proc.wait()
 
 
-def phylox_git_crossover(config, seeds, pop):
+def phylox_git_crossover(config, pop):
     pop = [array_to_hex(individual) for individual in pop]
     pop_size = len(pop)
     offspring = []
     retry = 0
-    for seed in seeds:
+    for _ in range(pop_size):
         idx1, idx2 = torch.randint(0, pop_size, (2,))
         commit1, commit2 = pop[idx1], pop[idx2]
         while (
@@ -71,7 +72,9 @@ def phylox_git_crossover(config, seeds, pop):
             commit1, commit2 = pop[idx1], pop[idx2]
             retry += 1
 
-        new_commit = api.git_crossover(config, seed.item(), commit1, commit2)
+        new_commit = api.git_crossover(
+            config, random.randint(0, 2 << 31), commit1, commit2
+        )
         offspring.append(hex_to_array(new_commit))
 
     logger.info(f"Git crossover stats: pop_size={pop_size}, retry={retry}")
@@ -81,9 +84,33 @@ def phylox_git_crossover(config, seeds, pop):
 
 def git_crossover(config, pop):
     pop_size, dim = pop.shape
-    seeds = torch.randint(0, 1_000_000, (pop_size,))
 
-    return phylox_git_crossover(config, seeds, pop)
+    return phylox_git_crossover(config, pop)
+
+
+def evogit_mutation(config, llm_backend, pop):
+    seeds = torch.randint(0, 2 << 31, (pop.shape[0],))
+    commits = [array_to_hex(ind) for ind in pop]
+    new_commits = api.llm_constrained_mutation(config, llm_backend, seeds, commits)
+    offspring = [hex_to_array(new_commit) for new_commit in new_commits]
+    return torch.stack(offspring)
+
+
+def evogit_crossover(config, pop):
+    n_pair, _, dim = pop.shape
+    offspring = []
+    for commit1, commit2 in pop:
+        commit1 = array_to_hex(commit1)
+        commit2 = array_to_hex(commit2)
+        print("Merging commits:", commit1, commit2)
+        new_commit = api.git_crossover(
+            config, random.randint(0, 2 << 31), commit1, commit2
+        )
+        offspring.append(hex_to_array(new_commit))
+        print("New commit:", new_commit)
+
+    offspring = torch.stack(offspring)
+    return offspring
 
 
 def phylox_llm_mutation(config, llm_backend, seeds, pop):
@@ -117,10 +144,12 @@ def llm_crossover(config, llm_backend, pop):
     pop = pop[mating_pool, :]
     return phylox_llm_crossover(config, llm_backend, seeds, pop)
 
+
 def load_vectors(config, pop):
     commits = [array_to_hex(commit) for commit in pop]
     vectors = api.load_vectors(config, commits)
     return torch.from_numpy(vectors)
+
 
 def proxy_vector_mutation(config, pop):
     commits = [array_to_hex(commit) for commit in pop]
@@ -235,10 +264,27 @@ class CodegenProblem(Problem):
         global __codegen_problem__
         __codegen_problem__[self._index_id_] = (config, pool)
 
-    @torch.compiler.disable
     def evaluate(self, pop):
         config, pool = __codegen_problem__[self._index_id_]
         return evaluate(config, pool, pop)
+
+
+class EvoGitProblem(Problem):
+    def __init__(self, config):
+        super().__init__()
+        self.config = config
+
+    def evaluate(self, pop):
+        prev, new = pop
+        # compare the previous and new commits
+        # return True if the new commit is better than the previous one
+        result = []
+        for p, n in zip(prev, new):
+            p = array_to_hex(p)
+            n = array_to_hex(n)
+            result.append(api.llm_diff_compare(self.config, p, n))
+        result = torch.tensor(result)
+        return result
 
 
 class MnistProblem(Problem):
@@ -248,7 +294,7 @@ class MnistProblem(Problem):
 
     def evaluate(self, pop):
         density = torch.sum(pop, dim=1) / pop.shape[1]
-        goodness = torch.ones((pop.shape[0], ))
+        goodness = torch.ones((pop.shape[0],))
         fitness = torch.stack((density, goodness), dim=1)
         return fitness
 
