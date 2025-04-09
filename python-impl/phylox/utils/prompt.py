@@ -1,6 +1,10 @@
 """This module contruct high-level prompt for a code base."""
 
+# %%
 from pathlib import Path
+import json
+import os
+import random
 import subprocess
 from tree_sitter import Language, Parser
 import tree_sitter_javascript as tsjavascript
@@ -42,17 +46,48 @@ def extract_signatures(code, language):
 
     symbols = []
 
-    def visit(node):
+    def visit(node, parent_hierarchy=None):
+        if parent_hierarchy is None:
+            parent_hierarchy = []
+
+        current_hierarchy = parent_hierarchy[:]
         if node.type == "function_declaration":
             sig = extract_function_signature(node, code.encode("utf8"))
             if sig:
-                symbols.append(sig)
+                current_hierarchy.append(sig)
+                symbols.append(
+                    {
+                        "type": "function",
+                        "signature": sig,
+                        "hierarchy": current_hierarchy,
+                    }
+                )
         elif node.type == "class_declaration":
             sig = extract_class_signature(node, code.encode("utf8"))
             if sig:
-                symbols.append(sig)
+                current_hierarchy.append(sig)
+                symbols.append(
+                    {"type": "class", "signature": sig, "hierarchy": current_hierarchy}
+                )
+        elif node.type == "variable_declaration":
+            for child in node.children:
+                if child.type == "variable_declarator":
+                    name_node = child.child_by_field_name("name")
+                    if name_node:
+                        name = code[name_node.start_byte : name_node.end_byte].decode(
+                            "utf8"
+                        )
+                        current_hierarchy.append(name)
+                        symbols.append(
+                            {
+                                "type": "variable",
+                                "name": name,
+                                "hierarchy": current_hierarchy,
+                            }
+                        )
+
         for child in node.children:
-            visit(child)
+            visit(child, current_hierarchy)
 
     visit(root)
     return symbols
@@ -61,11 +96,11 @@ def extract_signatures(code, language):
 def project_tree_view(project_path: str, mode: str = "json"):
     """Get a tree view of the project structure."""
     if mode == "json":
-        args = ["tree", "-Ji"]
+        args = ["tree", "-Ji", "--gitignore"]
     elif mode == "path":
-        args = ["tree", "-fi"]
+        args = ["tree", "-fi", "--gitignore"]
     elif mode == "tree":
-        args = ["tree"]
+        args = ["tree", "--gitignore"]
     else:
         raise ValueError(f"Unsupported mode: {mode}")
     tree_view = subprocess.run(
@@ -75,6 +110,31 @@ def project_tree_view(project_path: str, mode: str = "json"):
         capture_output=True,
     ).stdout
     return tree_view
+
+
+def _flatten_tree_view(tree_view: str):
+    file_list = []
+    for file in tree_view:
+        if file["type"] == "file":
+            file_list.append(file)
+        elif file["type"] == "directory":
+            dir_name = file["name"]
+            sub_files = _flatten_tree_view(file["contents"])
+            sub_files = [
+                {**sub_file, "name": os.path.join(dir_name, sub_file["name"])}
+                for sub_file in sub_files
+            ]
+            file_list.extend(sub_files)
+        else:
+            raise ValueError(f"Unsupported file type: {file['type']}")
+
+
+def random_sample_file(project_path: str, tree_view: str):
+    """Randomly sample a file from the project."""
+    tree_view = json.loads(tree_view)
+    flattened_list = _flatten_tree_view(tree_view)
+    selected_file = random.choice(flattened_list)
+    return os.path.join(project_path, selected_file["name"])
 
 
 def get_language_by_extension(file_extension):
@@ -87,3 +147,15 @@ def get_language_by_extension(file_extension):
         return Language(tscss.language())
     else:
         raise ValueError(f"Unsupported file extension: {file_extension}")
+
+
+def get_lint_feedback(project_path: str):
+    """Get ESLint feedback for the project."""
+    lint_output = subprocess.run(
+        ["npx", "next", "lint"],
+        check=True,
+        text=True,
+        capture_output=True,
+        cwd=project_path,
+    ).stdout
+    return lint_output
