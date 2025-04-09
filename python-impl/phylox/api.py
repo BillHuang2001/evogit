@@ -338,7 +338,6 @@ def _gather_info(config, commits) -> list[dict[str, Any]]:
         random_file = random.choice(text_files)
         random_file_path = os.path.join(worktree, random_file)
         with open(random_file_path, "r") as f:
-            print(f"Reading {random_file_path}")
             code = f.read()
         code = code.split("\n")
         n_lines = len(code)
