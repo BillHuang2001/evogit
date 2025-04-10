@@ -570,11 +570,7 @@ def lint_code_base(config: PhyloXConfig, commits: list[str]) -> list[str]:
         # wait for the process to finish
         try:
             stdout, stderr = handler.communicate(timeout=120)
-            if handler.returncode != 0:
-                logger.warning(f"Linting failed: {stderr}")
-                results.append("")
-            else:
-                results.append(stdout)
+            results.append(stdout)
         except subprocess.TimeoutExpired:
             handler.kill()
             stdout, stderr = handler.communicate()
