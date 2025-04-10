@@ -47,9 +47,9 @@ def update_branches(config, pop):
 
 def git_update(config, generation):
     handlers = []
-    if generation % config.fetch_every == 0:
+    if config.fetch_every > 0 and generation % config.fetch_every == 0:
         handlers.extend(api.fetch_remote(config))
-    if generation % config.push_every == 0:
+    if config.push_every > 0 and generation % config.push_every == 0:
         handlers.extend(api.push_local_branches(config))
 
     for proc in handlers:
@@ -279,6 +279,7 @@ class EvoGitProblem(Problem):
         prev, new = pop
         prev = [array_to_hex(commit) for commit in prev]
         new = [array_to_hex(commit) for commit in new]
+        api.lint_code_base(self.config, new)
         # compare the previous and new commits
         # return True if the new commit is better than the previous one
         seeds = [random.randint(0, 2 << 31) for _ in range(len(prev))]

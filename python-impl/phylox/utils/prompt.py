@@ -149,13 +149,25 @@ def get_language_by_extension(file_extension):
         raise ValueError(f"Unsupported file extension: {file_extension}")
 
 
-def get_lint_feedback(project_path: str):
-    """Get ESLint feedback for the project."""
-    lint_output = subprocess.run(
-        ["npx", "next", "lint"],
-        check=True,
-        text=True,
-        capture_output=True,
-        cwd=project_path,
-    ).stdout
-    return lint_output
+def get_lint_feedback(project_path: str, async_run: bool = False):
+    """Get ESLint feedback for the project.
+    If async_run is True, run ESLint in the background and return the handler.
+    Otherwise, run ESLint synchronously and return the output as string.
+    """
+    if async_run:
+        handler = subprocess.Popen(
+            ["npx", "next", "lint"],
+            text=True,
+            capture_output=True,
+            cwd=project_path,
+        )
+        return handler
+    else:
+        lint_output = subprocess.run(
+            ["npx", "next", "lint"],
+            check=True,
+            text=True,
+            capture_output=True,
+            cwd=project_path,
+        ).stdout
+        return lint_output

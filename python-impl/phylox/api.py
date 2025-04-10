@@ -12,6 +12,7 @@ import numpy as np
 
 from .config import PhyloXConfig
 from .utils import git, llm
+from .utils.prompt import get_lint_feedback
 
 logger = logging.getLogger("phylox")
 
@@ -519,7 +520,11 @@ def _construct_diff_comp_prompt(config, prev_commit, new_commit) -> str:
 
 
 def llm_diff_compare(
-    config: PhyloXConfig, llm_backend: Any, seeds: list[int], prev_commits: list[str], new_commits: list[str]
+    config: PhyloXConfig,
+    llm_backend: Any,
+    seeds: list[int],
+    prev_commits: list[str],
+    new_commits: list[str],
 ) -> list[bool]:
     """Return True if the change from prev_commit to new_commit is good, and False otherwise"""
     prompts = []
@@ -540,3 +545,38 @@ def llm_diff_compare(
             result.append(False)
 
     return result
+
+
+def lint_code_base(config: PhyloXConfig, commits: list[str]) -> list[str]:
+    """Lint the code base.
+    The result will be written to the git notes as well as returning it.
+    """
+    worktrees = prepare_temp_worktrees(config, commits)
+
+    # get the lint feedback, the handler is a subprocess.Popen object
+    handlers = []
+    for worktree in worktrees:
+        handlers.append(get_lint_feedback(worktree, async_run=True))
+
+    results = []
+    # wait for these subprocess to end, and get the text output
+    for handler in handlers:
+        # wait for the process to finish
+        try:
+            stdout, stderr = handler.communicate(timeout=120)
+            if handler.returncode != 0:
+                logger.warning(f"Linting failed: {stderr}")
+                results.append("")
+            else:
+                results.append(stdout)
+        except subprocess.TimeoutExpired:
+            handler.kill()
+            stdout, stderr = handler.communicate()
+            logger.warning(f"Linting timed out: {stderr}")
+            results.append(stdout)
+
+    # write the results to the git notes
+    for commit, result in zip(commits, results):
+        git.add_note(config, commit, result, overwrite=True)
+
+    return results
