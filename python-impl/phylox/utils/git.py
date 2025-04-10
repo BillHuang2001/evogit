@@ -266,7 +266,7 @@ def delete_tags(config: PhyloXConfig, tags: list[str]) -> None:
 
 
 def add_note(
-    config: PhyloXConfig, commit: str, note: str, overwrite: bool = False
+    config: PhyloXConfig, commit: str, note: str | bytes, overwrite: bool = False
 ) -> None:
     """Add a note to the current commit. If overwrite is True, force overwrite the existing note."""
     # the note is passed through stdin, so we use `-F -` to let git read from stdin
@@ -277,10 +277,13 @@ def add_note(
 
     cmd.append(commit)
 
+    if isinstance(note, str):
+        note = note.encode("utf-8")
+
     subprocess.run(
         cmd,
         cwd=config.git_dir,
-        input=note.encode("utf-8"),
+        input=note,
         check=True,
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,
