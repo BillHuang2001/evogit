@@ -378,6 +378,12 @@ def llm_constrained_mutation(config, llm_backend, seeds, commits) -> list[str]:
         prompt_code = info["code"][:]
         prompt_code.insert(info["random_section_end"], "<|END_EDIT|>")
         prompt_code.insert(info["random_section_start"], "<|EDIT|>")
+        # takes 200 lines before this section and 200 lines after this section
+        prompt_code = prompt_code[
+            max(0, info["random_section_start"] - 200) : min(
+                info["random_section_end"] + 202, len(prompt_code)
+            )
+        ]
         prompt_code = "\n".join(prompt_code)
         prompt_text = config.prompt_constructor(
             info["file_list"], info["random_file"], prompt_code
