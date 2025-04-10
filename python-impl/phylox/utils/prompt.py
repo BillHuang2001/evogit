@@ -156,18 +156,21 @@ def get_lint_feedback(project_path: str, async_run: bool = False):
     """
     if async_run:
         handler = subprocess.Popen(
-            ["npx", "next", "lint"],
+            "npm install && npx next lint -f codeframe",
             text=True,
-            capture_output=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
             cwd=project_path,
+            shell=True,
         )
         return handler
     else:
         lint_output = subprocess.run(
-            ["npx", "next", "lint"],
+            "npm install && npx next lint -f codeframe",
             check=True,
             text=True,
             capture_output=True,
             cwd=project_path,
+            shell=True,
         ).stdout
         return lint_output
