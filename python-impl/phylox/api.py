@@ -11,7 +11,7 @@ import random
 import numpy as np
 
 from .config import PhyloXConfig
-from .utils import git, llm, prompt
+from .utils import git, llm
 
 logger = logging.getLogger("phylox")
 
