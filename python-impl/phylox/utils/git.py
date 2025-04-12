@@ -772,10 +772,19 @@ def fetch_notes_from_remote(
         )
 
 
-def diff_view(config: PhyloXConfig, commit1: str, commit2: str) -> None:
+def diff_view(
+    config: PhyloXConfig, commit1: str, commit2: str, context_lines: int = 8
+) -> None:
     """View the diff between two commits."""
     diff = subprocess.run(
-        ["git", "diff", "--no-color", commit1, commit2],
+        [
+            "git",
+            "diff",
+            "--no-color",
+            f"--unified={str(context_lines)}",
+            commit1,
+            commit2,
+        ],
         cwd=config.git_dir,
         check=True,
         capture_output=True,
