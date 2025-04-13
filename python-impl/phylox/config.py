@@ -29,7 +29,9 @@ class PhyloXConfig:
     prompt_constructor: Callable
     respond_extractor: Callable
     diff_prompt_constructor: Callable
+    fixup_prompt_constructor: Callable
     max_merge_retry: int
+    clean_start: bool
     remote_repo: Optional[str]
     hostname: Optional[str]
     merge_driver: Optional[str]
