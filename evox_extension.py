@@ -102,12 +102,10 @@ def evogit_crossover(config, pop):
     for commit1, commit2 in pop:
         commit1 = array_to_hex(commit1)
         commit2 = array_to_hex(commit2)
-        print("Merging commits:", commit1, commit2)
         new_commit = api.git_crossover(
             config, random.randint(0, 2 << 31), commit1, commit2
         )
         offspring.append(hex_to_array(new_commit))
-        print("New commit:", new_commit)
 
     offspring = torch.stack(offspring)
     return offspring
