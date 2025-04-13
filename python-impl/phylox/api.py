@@ -5,7 +5,7 @@ import os
 import subprocess
 from collections import namedtuple
 from pathlib import Path
-from typing import Any, Tuple
+from typing import Any, Tuple, Optional
 import random
 
 import numpy as np
@@ -59,6 +59,12 @@ def get_initial_branches(config: PhyloXConfig, pop_size: int) -> list[str]:
         So it tries to kickstart the evolution by loading the branches from the remote.
     3. If still not enough, create new branches from the current head.
     """
+    if config.clean_start:
+        # If clean start, start from main branch
+        print("Clean start, start from main branch")
+        main_commit_id = git.get_commit_by_branch(config, "main")
+        pop = [main_commit_id for _ in range(pop_size)]
+        return pop
 
     # Try to load the branches from the local repository
     branches = git.list_branches(config)
@@ -350,7 +356,7 @@ def _gather_info(config, commits) -> list[dict[str, Any]]:
         n_lines = len(code)
         random_section_start = random.randint(0, n_lines - 1)
         random_section_end = random.randint(
-            random_section_start, min(random_section_start + 50, n_lines)
+            random_section_start + 1, min(random_section_start + 80, n_lines)
         )
         infos.append(
             {
@@ -402,14 +408,15 @@ def llm_constrained_mutation(config, llm_backend, seeds, commits) -> list[str]:
         end = info["random_section_end"]
         edited_code[start:end] = [code_change]
         edited_code = "\n".join(edited_code)
-        git.update_file(
+        git.update_file_in_worktree(
             config,
-            info["commit"],
+            info["worktree"],
             edited_code,
             f"{config.llm_name}: {commit_message}",
             filename=info["random_file"],
         )
-        edited_codes.append(git.read_head_commit(config))
+        commit_id = git.read_head_commit(config, info["worktree"])
+        edited_codes.append(commit_id)
 
     cleanup_temp_worktrees(config)
     return edited_codes
@@ -553,11 +560,13 @@ def llm_diff_compare(
     return result
 
 
-def lint_code_base(config: PhyloXConfig, commits: list[str]) -> list[str]:
+def lint_code_base(config: PhyloXConfig, commits: list[str], worktrees: Optional[list[str]] = None) -> list[str]:
     """Lint the code base.
     The result will be written to the git notes as well as returning it.
     """
-    worktrees = prepare_temp_worktrees(config, commits)
+    provided_worktrees = worktrees is not None
+    if not provided_worktrees:
+        worktrees = prepare_temp_worktrees(config, commits)
 
     # get the lint feedback, the handler is a subprocess.Popen object
     handlers = []
@@ -580,5 +589,8 @@ def lint_code_base(config: PhyloXConfig, commits: list[str]) -> list[str]:
     # write the results to the git notes
     for commit, result in zip(commits, results):
         git.add_note(config, commit, result, overwrite=True)
+
+    if not provided_worktrees:
+        cleanup_temp_worktrees(config)
 
     return results
