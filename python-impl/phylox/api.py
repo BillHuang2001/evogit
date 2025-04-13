@@ -335,6 +335,16 @@ def llm_mutation(config, llm_backend, seeds, commits) -> list[str]:
     return offspring
 
 
+def _generate_random_section(n_lines: int) -> Tuple[int, int]:
+    """Generate a random section of the code, 50 - 80 lines long"""
+    random_length = random.randint(50, 80)
+    if random_length > n_lines:
+        random_length = n_lines
+    random_start = random.randint(0, n_lines - random_length)
+    random_end = random_start + random_length
+    return random_start, random_end
+
+
 def _gather_info(config, commits) -> list[dict[str, Any]]:
     worktrees = prepare_temp_worktrees(config, commits)
     infos = []
@@ -354,10 +364,7 @@ def _gather_info(config, commits) -> list[dict[str, Any]]:
             code = f.read()
         code = code.split("\n")
         n_lines = len(code)
-        random_section_start = random.randint(0, n_lines - 1)
-        random_section_end = random.randint(
-            random_section_start + 1, min(random_section_start + 80, n_lines)
-        )
+        random_section_start, random_section_end = _generate_random_section(n_lines)
         infos.append(
             {
                 "commit": commit,
@@ -391,8 +398,9 @@ def llm_constrained_mutation(config, llm_backend, seeds, commits) -> list[str]:
             )
         ]
         prompt_code = "\n".join(prompt_code)
+        lint_output = git.read_note(config, info["commit"])
         prompt_text = config.prompt_constructor(
-            info["file_list"], info["random_file"], prompt_code
+            info["file_list"], info["random_file"], prompt_code, lint_output
         )
         prompts.append(prompt_text)
 
