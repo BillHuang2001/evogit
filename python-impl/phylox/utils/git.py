@@ -169,11 +169,14 @@ def config_merge_driver(config: PhyloXConfig) -> None:
             f.write("*.npy merge=phylox-custom-merge-driver\n")
 
 
-def get_commit_by_branch(config: PhyloXConfig, branch: str) -> str:
+def get_commit_by_branch(
+    config: PhyloXConfig, branch: str, worktree: Optional[str] = None
+) -> str:
+    cwd = worktree if worktree is not None else config.git_dir
     return (
         subprocess.run(
             ["git", "rev-parse", branch],
-            cwd=config.git_dir,
+            cwd=cwd,
             check=True,
             capture_output=True,
         )
@@ -182,13 +185,15 @@ def get_commit_by_branch(config: PhyloXConfig, branch: str) -> str:
     )
 
 
-def get_commit_by_tag(config: PhyloXConfig, tag: str) -> str:
-    return get_commit_by_branch(config, f"tags/{tag}")
+def get_commit_by_tag(
+    config: PhyloXConfig, tag: str, worktree: Optional[str] = None
+) -> str:
+    return get_commit_by_branch(config, f"tags/{tag}", worktree)
 
 
-def read_head_commit(config: PhyloXConfig) -> str:
+def read_head_commit(config: PhyloXConfig, worktree: Optional[str] = None) -> str:
     """Read the commit id of the current HEAD."""
-    return get_commit_by_branch(config, "HEAD")
+    return get_commit_by_branch(config, "HEAD", worktree)
 
 
 def list_branches(
@@ -290,6 +295,21 @@ def add_note(
     )
 
 
+def append_note(config: PhyloXConfig, commit: str, note: str | bytes) -> None:
+    """Append a note to the current commit."""
+    if isinstance(note, str):
+        note = note.encode("utf-8")
+
+    subprocess.run(
+        ["git", "notes", "append", "-"],
+        cwd=config.git_dir,
+        input=note,
+        check=True,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
+
+
 def read_note(config: PhyloXConfig, commit: Optional[str]) -> Optional[str]:
     """Read the note of the specified commit. If commit is None, read the note of the current HEAD.
     Return None if the note does not exist.
@@ -309,6 +329,40 @@ def read_note(config: PhyloXConfig, commit: Optional[str]) -> Optional[str]:
         return None
     else:
         return completed_proc.stdout.decode("utf-8")
+
+
+def update_file_in_worktree(
+    config: PhyloXConfig,
+    worktree: str,
+    new_content: Union[str, bytes],
+    commit_message: str,
+    filename: Optional[str] = None,
+) -> None:
+    """Update the content of the file in the specified worktree, then commit the updated file."""
+    filename = filename if filename is not None else config.filename
+    if isinstance(new_content, str):
+        mode = "r+"
+    elif isinstance(new_content, bytes):
+        mode = "rb+"
+    else:
+        raise ValueError("new_content must be either a string or bytes.")
+
+    with open(os.path.join(worktree, filename), mode) as f:
+        current_content = f.read()
+        # if the content is the same, do nothing
+        if current_content == new_content:
+            return
+
+        f.seek(0)
+        f.write(new_content)
+        f.truncate()
+
+    subprocess.run(["git", "add", filename], cwd=worktree, check=True)
+    commit_message = git_commit_message_pattern.sub("", commit_message)
+    commit_message = commit_message[:256]  # truncate the message to 256 characters
+    subprocess.run(
+        ["git", "commit", "-q", "-m", commit_message], cwd=worktree, check=True
+    )
 
 
 def update_file(
