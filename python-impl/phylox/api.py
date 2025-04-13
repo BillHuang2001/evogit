@@ -29,6 +29,11 @@ def init_repo(config: PhyloXConfig, origin="local", force_create=False) -> None:
         When "local", the repository is initialized locally.
         When "remote", the repository is initialized by cloning from the remote repository.
     """
+    if not config.clean_start:
+        # If resuming from a previous run, we don't need to create the git directory
+        print("Resuming from a previous run, no need to create the git directory")
+        return
+
     git.create_git_dir(config.git_dir, force_create)
     if origin == "local":
         git.init_git_repo(config)
