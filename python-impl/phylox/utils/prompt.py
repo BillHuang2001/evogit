@@ -156,7 +156,7 @@ def get_lint_feedback(project_path: str, async_run: bool = False):
     """
     if async_run:
         handler = subprocess.Popen(
-            "npm install && npx next lint -f codeframe",
+            "npm install && npx next lint -f codeframe && npx next build --no-lint --no-mangling",
             text=True,
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
@@ -166,7 +166,7 @@ def get_lint_feedback(project_path: str, async_run: bool = False):
         return handler
     else:
         lint_output = subprocess.run(
-            "npm install && npx next lint -f codeframe",
+            "npm install && npx next lint -f codeframe && npx next build --no-lint --no-mangling",
             check=True,
             text=True,
             capture_output=True,
