@@ -411,11 +411,13 @@ def llm_constrained_mutation(config, llm_backend, seeds, commits) -> list[str]:
 
     responses = llm_backend.query(seeds, prompts)
     responses = [config.respond_extractor(response) for response in responses]
-    code_changes = [responses[0] for responses in responses]
-    commit_messages = [responses[1] for responses in responses]
+    code_changes = [responses.code for responses in responses]
+    commit_messages = [responses.commit_message for responses in responses]
+    new_file_content = [responses.new_file_content for responses in responses]
+    filename = [responses.filename for responses in responses]
     # update the code with the code changes
     edited_codes = []
-    for info, code_change, commit_message in zip(infos, code_changes, commit_messages):
+    for info, code_change in zip(infos, code_changes):
         edited_code = info["code"][:]
         start = info["random_section_start"]
         end = info["random_section_end"]
@@ -425,8 +427,27 @@ def llm_constrained_mutation(config, llm_backend, seeds, commits) -> list[str]:
             config,
             info["worktree"],
             edited_code,
-            f"{config.llm_name}: {commit_message}",
             filename=info["random_file"],
+        )
+
+    for info, filename, new_file_content in zip(infos, filename, new_file_content):
+        if filename.lower() == "none":
+            # if the filename is None, it means that the file is not changed
+            # so we don't need to update the file
+            continue
+
+        git.add_file_in_worktree(
+            config,
+            info["worktree"],
+            new_file_content,
+            filename,
+        )
+
+    for info, commit_message in zip(infos, commit_messages):
+        git.commit_changes_in_worktree(
+            config,
+            info["worktree"],
+            f"{config.llm_name}: {commit_message}",
         )
         commit_id = git.read_head_commit(config, info["worktree"])
         edited_codes.append(commit_id)
@@ -566,14 +587,16 @@ def llm_diff_compare(
             result.append(False)
         else:
             logger.warning(
-                f"Unknown response from LLM: {response}. " "Assuming the change is bad."
+                f"Unknown response from LLM: {response}. Assuming the change is bad."
             )
             result.append(False)
 
     return result
 
 
-def lint_code_base(config: PhyloXConfig, commits: list[str], worktrees: Optional[list[str]] = None) -> list[str]:
+def lint_code_base(
+    config: PhyloXConfig, commits: list[str], worktrees: Optional[list[str]] = None
+) -> list[str]:
     """Lint the code base.
     The result will be written to the git notes as well as returning it.
     """
