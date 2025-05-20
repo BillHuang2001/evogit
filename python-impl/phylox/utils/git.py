@@ -3,6 +3,7 @@ The utility functions for git operations.
 """
 
 import subprocess
+import warnings
 import os
 import shutil
 import tempfile
@@ -335,7 +336,6 @@ def update_file_in_worktree(
     config: PhyloXConfig,
     worktree: str,
     new_content: Union[str, bytes],
-    commit_message: str,
     filename: Optional[str] = None,
 ) -> None:
     """Update the content of the file in the specified worktree, then commit the updated file."""
@@ -358,6 +358,36 @@ def update_file_in_worktree(
         f.truncate()
 
     subprocess.run(["git", "add", filename], cwd=worktree, check=True)
+
+
+def add_file_in_worktree(
+    config: PhyloXConfig,
+    worktree: str,
+    new_content: Union[str, bytes],
+    file_path: str,
+):
+    if isinstance(new_content, str):
+        mode = "w"
+    elif isinstance(new_content, bytes):
+        mode = "wb"
+    else:
+        raise ValueError("new_content must be either a string or bytes.")
+
+    if os.path.exists(file_path):
+        warnings.warn(f"{file_path} already exists!")
+    else:
+        with open(os.path.join(worktree, file_path), mode) as f:
+            f.write(new_content)
+
+    subprocess.run(["git", "add", file_path], cwd=worktree, check=True)
+
+
+def commit_changes_in_worktree(
+    config: PhyloXConfig,
+    worktree: str,
+    commit_message: str,
+):
+    """Commit the changes in the specified worktree. Assume that the changes are already staged."""
     commit_message = git_commit_message_pattern.sub("", commit_message)
     commit_message = commit_message[:256]  # truncate the message to 256 characters
     subprocess.run(
