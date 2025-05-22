@@ -376,6 +376,8 @@ def add_file_in_worktree(
     if os.path.exists(file_path):
         warnings.warn(f"{file_path} already exists!")
     else:
+        # Make sure the directory exists
+        os.makedirs(os.path.dirname(os.path.join(worktree, file_path)), exist_ok=True)
         with open(os.path.join(worktree, file_path), mode) as f:
             f.write(new_content)
 
