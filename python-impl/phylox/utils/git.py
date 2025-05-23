@@ -392,9 +392,14 @@ def commit_changes_in_worktree(
     """Commit the changes in the specified worktree. Assume that the changes are already staged."""
     commit_message = git_commit_message_pattern.sub("", commit_message)
     commit_message = commit_message[:256]  # truncate the message to 256 characters
-    subprocess.run(
-        ["git", "commit", "-q", "-m", commit_message], cwd=worktree, check=True
+    # git commit could fail if no files are staged
+    proc = subprocess.run(
+        ["git", "commit", "-q", "-m", commit_message], cwd=worktree, capture_output=True
     )
+    if proc.returncode != 0:
+        warnings.warn(
+            f"Failed to commit changes in {worktree}. Status: {proc.returncode}, Error: {proc.stderr.decode('utf-8')}"
+        )
 
 
 def update_file(
