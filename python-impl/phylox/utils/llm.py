@@ -20,6 +20,7 @@ class TGIBackend:
         num_workers=4,
         model="",
         api_key="-",
+        top_p=0.9,
     ) -> None:
         """
         Parameters
@@ -45,6 +46,7 @@ class TGIBackend:
         self.client = ChatCompletionsClient(
             endpoint=endpoint + "openai/deployments/" + model,
             credential=AzureKeyCredential(api_key),
+            top_p=top_p,
         )
 
     def _one_restful_request(self, args):
