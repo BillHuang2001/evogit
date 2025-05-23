@@ -149,7 +149,7 @@ def get_language_by_extension(file_extension):
         raise ValueError(f"Unsupported file extension: {file_extension}")
 
 
-def def_linter_feedback(project_path: str, project_type: str, async_run: bool = False):
+def get_linter_feedback(project_path: str, project_type: str, async_run: bool = False):
     if project_type == "python":
         return get_ruff_feedback(project_path, async_run)
     elif project_type == "nextjs":
