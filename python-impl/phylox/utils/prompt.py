@@ -174,3 +174,30 @@ def get_lint_feedback(project_path: str, async_run: bool = False):
             shell=True,
         ).stdout
         return lint_output
+
+
+def get_ruff_feedback(project_path: str, async_run: bool = False):
+    """Run Ruff to get lint feedback for the python project.
+    If async_run is True, run Ruff in the background and return the handler.
+    Otherwise, run Ruff synchronously and return the output as string.
+    """
+    if async_run:
+        handler = subprocess.Popen(
+            "ruff .",
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            cwd=project_path,
+            shell=True,
+        )
+        return handler
+    else:
+        lint_output = subprocess.run(
+            "ruff .",
+            check=True,
+            text=True,
+            capture_output=True,
+            cwd=project_path,
+            shell=True,
+        ).stdout
+        return lint_output
