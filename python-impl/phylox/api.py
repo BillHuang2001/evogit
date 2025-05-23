@@ -12,7 +12,7 @@ import numpy as np
 
 from .config import PhyloXConfig
 from .utils import git, llm
-from .utils.prompt import get_lint_feedback
+from .utils.prompt import get_linter_feedback
 
 logger = logging.getLogger("phylox")
 
@@ -619,7 +619,11 @@ def lint_code_base(
     # get the lint feedback, the handler is a subprocess.Popen object
     handlers = []
     for worktree in worktrees:
-        handlers.append(get_lint_feedback(worktree, async_run=True))
+        handlers.append(
+            get_linter_feedback(
+                worktree, project_type=config.project_type, async_run=True
+            )
+        )
 
     results = []
     # wait for these subprocess to end, and get the text output

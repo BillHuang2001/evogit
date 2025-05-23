@@ -149,7 +149,14 @@ def get_language_by_extension(file_extension):
         raise ValueError(f"Unsupported file extension: {file_extension}")
 
 
-def get_lint_feedback(project_path: str, async_run: bool = False):
+def def_linter_feedback(project_path: str, project_type: str, async_run: bool = False):
+    if project_type == "python":
+        return get_ruff_feedback(project_path, async_run)
+    elif project_type == "nextjs":
+        return get_nextjs_feedback(project_path, async_run)
+
+
+def get_nextjs_feedback(project_path: str, async_run: bool = False):
     """Get ESLint feedback for the project.
     If async_run is True, run ESLint in the background and return the handler.
     Otherwise, run ESLint synchronously and return the output as string.

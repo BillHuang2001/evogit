@@ -32,6 +32,7 @@ class PhyloXConfig:
     fixup_prompt_constructor: Callable
     max_merge_retry: int
     clean_start: bool
+    project_type: str
     remote_repo: Optional[str]
     hostname: Optional[str]
     merge_driver: Optional[str]
