@@ -359,7 +359,19 @@ def _gather_info(config, commits) -> list[dict[str, Any]]:
         # technically, json files are also text files
         # but json files are usually config files or data files
         # so we don't want to mutate them
-        text_file_extensions = ["js", "jsx", "ts", "tsx", "html", "css", "scss"]
+        text_file_extensions = [
+            # js related
+            "js",
+            "jsx",
+            "ts",
+            "tsx",
+            # python related
+            "py",
+            # html related
+            "html",
+            "css",
+            "scss",
+        ]
         text_files = [
             file for file in files if file.split(".")[-1] in text_file_extensions
         ]
