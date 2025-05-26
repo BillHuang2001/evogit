@@ -190,7 +190,7 @@ def get_ruff_feedback(project_path: str, async_run: bool = False):
     """
     if async_run:
         handler = subprocess.Popen(
-            "ruff .",
+            "uv run ruff check .",
             text=True,
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
@@ -200,7 +200,7 @@ def get_ruff_feedback(project_path: str, async_run: bool = False):
         return handler
     else:
         lint_output = subprocess.run(
-            "ruff .",
+            "uv run ruff check .",
             check=True,
             text=True,
             capture_output=True,
