@@ -373,12 +373,13 @@ def add_file_in_worktree(
     else:
         raise ValueError("new_content must be either a string or bytes.")
 
-    if os.path.exists(file_path):
+    full_path = os.path.join(worktree, file_path)
+    if os.path.exists(full_path):
         warnings.warn(f"{file_path} already exists!")
     else:
         # Make sure the directory exists
-        os.makedirs(os.path.dirname(os.path.join(worktree, file_path)), exist_ok=True)
-        with open(os.path.join(worktree, file_path), mode) as f:
+        os.makedirs(os.path.dirname(full_path), exist_ok=True)
+        with open(full_path, mode) as f:
             f.write(new_content)
 
     subprocess.run(["git", "add", file_path], cwd=worktree, check=True)
@@ -392,14 +393,23 @@ def commit_changes_in_worktree(
     """Commit the changes in the specified worktree. Assume that the changes are already staged."""
     commit_message = git_commit_message_pattern.sub("", commit_message)
     commit_message = commit_message[:256]  # truncate the message to 256 characters
-    # git commit could fail if no files are staged
-    proc = subprocess.run(
-        ["git", "commit", "-q", "-m", commit_message], cwd=worktree, capture_output=True
-    )
-    if proc.returncode != 0:
-        warnings.warn(
-            f"Failed to commit changes in {worktree}. Status: {proc.returncode}, Error: {proc.stderr.decode('utf-8')}"
+    n_retry = 0
+    while n_retry < 3:
+        n_retry += 1
+        # git commit could fail if no files are staged or due to some race condition
+        proc = subprocess.run(
+            ["git", "commit", "-q", "-m", commit_message],
+            cwd=worktree,
+            capture_output=True,
         )
+        if proc.returncode != 0:
+            stdout = proc.stdout.decode("utf-8")
+            stderr = proc.stderr.decode("utf-8")
+            warnings.warn(
+                f"Failed to commit changes in {worktree}. Status: {proc.returncode}, stdout: {stdout} stderr: {stderr}"
+            )
+        else:
+            break
 
 
 def update_file(
