@@ -341,8 +341,8 @@ def llm_mutation(config, llm_backend, seeds, commits) -> list[str]:
 
 
 def _generate_random_section(n_lines: int) -> Tuple[int, int]:
-    """Generate a random section of the code, 50 - 80 lines long"""
-    random_length = random.randint(50, 80)
+    """Generate a random section of the code, 64 - 128 lines long"""
+    random_length = random.randint(64, 128)
     if random_length > n_lines:
         random_length = n_lines
     random_start = random.randint(0, n_lines - random_length)
@@ -607,7 +607,10 @@ def llm_diff_compare(
 
 
 def lint_code_base(
-    config: PhyloXConfig, commits: list[str], worktrees: Optional[list[str]] = None
+    config: PhyloXConfig,
+    commits: list[str],
+    worktrees: Optional[list[str]] = None,
+    overwrite: bool = False,
 ) -> list[str]:
     """Lint the code base.
     The result will be written to the git notes as well as returning it.
@@ -640,7 +643,13 @@ def lint_code_base(
 
     # write the results to the git notes
     for commit, result in zip(commits, results):
-        git.add_note(config, commit, result, overwrite=True)
+        try:
+            git.add_note(config, commit, result, overwrite=overwrite)
+        except Exception as e:
+            # if overwrite is False, and the note already exists, ignore the error
+            # if overwrite is True, log the error
+            if overwrite:
+                logger.error(f"Failed to write note for commit {commit}: {e}")
 
     if not provided_worktrees:
         cleanup_temp_worktrees(config)
