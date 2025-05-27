@@ -585,23 +585,31 @@ def llm_diff_compare(
     prev_commits: list[str],
     new_commits: list[str],
 ) -> list[bool]:
-    """Return True if the change from prev_commit to new_commit is good, and False otherwise"""
+    """Return True if the change from prev_commit to new_commit is good, and False otherwise.
+    If the prev_commit and new_commit are the same commit, return True.
+    """
+    assert len(prev_commits) == len(new_commits)
     prompts = []
-    for prev_commit, new_commit in zip(prev_commits, new_commits):
-        prompt = _construct_diff_comp_prompt(config, prev_commit, new_commit)
-        prompts.append(prompt)
+    need_compare_idx = []
+    for i, (prev_commit, new_commit) in enumerate(zip(prev_commits, new_commits)):
+        if prev_commit != new_commit:
+            # only compare them if the commits are different
+            prompt = _construct_diff_comp_prompt(config, prev_commit, new_commit)
+            prompts.append(prompt)
+            need_compare_idx.append(i)
+
     responses = llm_backend.query(seeds, prompts)
-    result = []
-    for response in responses:
+    result = [True] * len(prev_commits)  # default to True for same commits
+    for idx, response in zip(need_compare_idx, responses):
         if "good" in response.lower():
-            result.append(True)
+            result[idx] = True
         elif "bad" in response.lower():
-            result.append(False)
+            result[idx] = False
         else:
             logger.warning(
                 f"Unknown response from LLM: {response}. Assuming the change is bad."
             )
-            result.append(False)
+            result[idx] = False
 
     return result
 
