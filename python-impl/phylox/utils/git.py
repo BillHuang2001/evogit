@@ -391,6 +391,12 @@ def commit_changes_in_worktree(
     commit_message: str,
 ):
     """Commit the changes in the specified worktree. Assume that the changes are already staged."""
+    if not has_staged_changes(config, worktree):
+        warnings.warn(
+            f"No staged changes in {worktree}. Skipping commit."
+        )
+        return
+
     commit_message = git_commit_message_pattern.sub("", commit_message)
     commit_message = commit_message[:256]  # truncate the message to 256 characters
     n_retry = 0
@@ -891,6 +897,21 @@ def diff_view(
         capture_output=True,
     ).stdout.decode("utf-8")
     return diff
+
+
+def has_staged_changes(config: PhyloXConfig, worktree: str) -> bool:
+    """Check if there are staged changes in the specified worktree."""
+    changes = subprocess.run(
+        ["git", "diff", "--cached", "--name-only"],
+        cwd=worktree,
+        check=True,
+        capture_output=True,
+    ).stdout.decode("utf-8")
+    # if the output is empty, there are no staged changes
+    if changes.strip() == "":
+        return False
+    else:
+        return True
 
 
 def list_files(
