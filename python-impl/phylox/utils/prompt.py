@@ -151,7 +151,7 @@ def get_language_by_extension(file_extension):
 
 def get_linter_feedback(project_path: str, project_type: str, async_run: bool = False):
     if project_type == "python":
-        return get_ruff_feedback(project_path, async_run)
+        return get_python_feedback(project_path, async_run)
     elif project_type == "nextjs":
         return get_nextjs_feedback(project_path, async_run)
 
@@ -183,14 +183,14 @@ def get_nextjs_feedback(project_path: str, async_run: bool = False):
         return lint_output
 
 
-def get_ruff_feedback(project_path: str, async_run: bool = False):
+def get_python_feedback(project_path: str, async_run: bool = False):
     """Run Ruff to get lint feedback for the python project.
     If async_run is True, run Ruff in the background and return the handler.
     Otherwise, run Ruff synchronously and return the output as string.
     """
     if async_run:
         handler = subprocess.Popen(
-            "uv run ruff check .",
+            "uv run pyright .",
             text=True,
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
@@ -200,7 +200,7 @@ def get_ruff_feedback(project_path: str, async_run: bool = False):
         return handler
     else:
         lint_output = subprocess.run(
-            "uv run ruff check .",
+            "uv run pyright .",
             check=True,
             text=True,
             capture_output=True,
