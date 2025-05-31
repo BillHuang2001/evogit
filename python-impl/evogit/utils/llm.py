@@ -32,7 +32,7 @@ class TGIBackend:
             Common parameters include `timeout`, `proxies`, etc.
         """
         super().__init__()
-        self.logger = logging.getLogger("phylox")
+        self.logger = logging.getLogger("evogit")
         self.num_workers = num_workers
         self.num_retry = 100000
         self.usage_history = []

@@ -8,9 +8,9 @@ from evox.operators.mutation import polynomial_mutation
 import torch
 import random
 
-from phylox import api
+from evogit import api
 
-logger = logging.getLogger("phylox")
+logger = logging.getLogger("evogit")
 
 # commit_id is either sha1 - 160 bits or sha256 - 256 bits
 # we use 20 bytes to represent the commit id using sha1
@@ -56,7 +56,7 @@ def git_update(config, generation):
         proc.wait()
 
 
-def phylox_git_crossover(config, pop):
+def evogit_git_crossover(config, pop):
     pop = [array_to_hex(individual) for individual in pop]
     pop_size = len(pop)
     offspring = []
@@ -85,7 +85,7 @@ def phylox_git_crossover(config, pop):
 def git_crossover(config, pop):
     pop_size, dim = pop.shape
 
-    return phylox_git_crossover(config, pop)
+    return evogit_git_crossover(config, pop)
 
 
 def evogit_mutation(config, llm_backend, pop):
@@ -111,7 +111,7 @@ def evogit_crossover(config, pop):
     return offspring
 
 
-def phylox_llm_mutation(config, llm_backend, seeds, pop):
+def evogit_llm_mutation(config, llm_backend, seeds, pop):
     commits = [array_to_hex(commit) for commit in pop]
     seeds = seeds.tolist()
     new_commits = api.llm_mutation(config, llm_backend, seeds, commits)
@@ -120,7 +120,7 @@ def phylox_llm_mutation(config, llm_backend, seeds, pop):
     return torch.stack(offspring)
 
 
-def phylox_llm_crossover(config, llm_backend, seeds, pop):
+def evogit_llm_crossover(config, llm_backend, seeds, pop):
     commits = [array_to_hex(commit) for commit in pop]
     seeds = seeds.tolist()
     new_commits = api.llm_crossover(config, llm_backend, seeds, commits)
@@ -132,7 +132,7 @@ def phylox_llm_crossover(config, llm_backend, seeds, pop):
 def llm_mutation(config, llm_backend, pop):
     pop_size = pop.shape[0]
     seeds = torch.randint(0, 1_000_000, (pop_size,))
-    return phylox_llm_mutation(config, llm_backend, seeds, pop)
+    return evogit_llm_mutation(config, llm_backend, seeds, pop)
 
 
 def llm_crossover(config, llm_backend, pop):
@@ -140,7 +140,7 @@ def llm_crossover(config, llm_backend, pop):
     seeds = torch.randint(0, 1_000_000, (pop_size,))
     mating_pool = torch.randint(0, pop_size, (pop_size,))
     pop = pop[mating_pool, :]
-    return phylox_llm_crossover(config, llm_backend, seeds, pop)
+    return evogit_llm_crossover(config, llm_backend, seeds, pop)
 
 
 def load_vectors(config, pop):
@@ -227,7 +227,7 @@ class LLMCrossover(ModuleBase):
 
 def evaluate(config, pool, pop):
     pop = [array_to_hex(individual) for individual in pop]
-    logger = logging.getLogger("phylox")
+    logger = logging.getLogger("evogit")
     logger.info(pop)
 
     # 1. prepare worktrees  2. evaluate  3. update notes  4. cleanup worktrees
@@ -308,7 +308,7 @@ class MigrateHelper:
     def __init__(self, config):
         self.config = config
         self.generation = 0
-        self.logger = logging.getLogger("phylox")
+        self.logger = logging.getLogger("evogit")
 
     def migrate_from_human(self):
         if self.generation % self.config.human_every == 0:
