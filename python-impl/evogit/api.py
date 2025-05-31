@@ -10,14 +10,14 @@ import random
 
 import numpy as np
 
-from .config import PhyloXConfig
+from .config import EvoGitConfig
 from .utils import git, llm
 from .utils.prompt import get_linter_feedback
 
 logger = logging.getLogger("phylox")
 
 
-def init_repo(config: PhyloXConfig, origin="local", force_create=False) -> None:
+def init_repo(config: EvoGitConfig, origin="local", force_create=False) -> None:
     """Initialize the git repository
 
     Parameters
@@ -43,7 +43,7 @@ def init_repo(config: PhyloXConfig, origin="local", force_create=False) -> None:
         raise ValueError(f"Unknown option: {origin}")
 
 
-def update_branches(config: PhyloXConfig, pop: list[str]) -> None:
+def update_branches(config: EvoGitConfig, pop: list[str]) -> None:
     """The branches are used to track the current state of the population"""
     branch_names = []
     hostname = config.hostname if config.hostname is not None else "host0"
@@ -54,7 +54,7 @@ def update_branches(config: PhyloXConfig, pop: list[str]) -> None:
     git.branches_track_commits(config, branch_names, pop)
 
 
-def get_initial_branches(config: PhyloXConfig, pop_size: int) -> list[str]:
+def get_initial_branches(config: EvoGitConfig, pop_size: int) -> list[str]:
     """Get the initial branches with a simple strategy.
     1. Try to load the existing branches from the local repository.
         Existing branches are the branches that are already created from previous runs.
@@ -92,7 +92,7 @@ def get_initial_branches(config: PhyloXConfig, pop_size: int) -> list[str]:
 
 
 def push_local_branches(
-    config: PhyloXConfig,
+    config: EvoGitConfig,
 ) -> Tuple[subprocess.Popen | None, subprocess.Popen | None]:
     """Push all branches to the remote"""
     branches = git.list_branches(config)
@@ -102,7 +102,7 @@ def push_local_branches(
 
 
 def fetch_remote(
-    config: PhyloXConfig,
+    config: EvoGitConfig,
 ) -> Tuple[subprocess.Popen | None, subprocess.Popen | None]:
     """Fetch remote branches and notes"""
     proc1 = git.fetch_from_remote(config)
@@ -110,16 +110,16 @@ def fetch_remote(
     return proc1, proc2
 
 
-def prepare_temp_worktrees(config: PhyloXConfig, commits: list[str]) -> list[str]:
+def prepare_temp_worktrees(config: EvoGitConfig, commits: list[str]) -> list[str]:
     worktrees = [git.add_temp_worktree(config, commit) for commit in commits]
     return worktrees
 
 
-def cleanup_temp_worktrees(config: PhyloXConfig) -> None:
+def cleanup_temp_worktrees(config: EvoGitConfig) -> None:
     git.cleanup_temp_worktrees(config)
 
 
-def evaluate_code(config: PhyloXConfig, commit: str, worktree) -> dict[str, str]:
+def evaluate_code(config: EvoGitConfig, commit: str, worktree) -> dict[str, str]:
     """Evaluate the the result of the individual. This function can be run in parallel.
 
     Parameters
@@ -203,14 +203,14 @@ def decode_result(output, illegal_value) -> Any:
 
 
 def update_notes(
-    config: PhyloXConfig, commits: list[str], evaluate_results: list[str]
+    config: EvoGitConfig, commits: list[str], evaluate_results: list[str]
 ) -> None:
     for commit, result in zip(commits, evaluate_results):
         note = json.dumps(result)
         git.add_note(config, commit, note, overwrite=True)
 
 
-def is_novel_merge(config: PhyloXConfig, commit1: str, commit2: str) -> bool:
+def is_novel_merge(config: EvoGitConfig, commit1: str, commit2: str) -> bool:
     """Check if the merge of commit1 and commit2 is novel, that is, A and B are not ancestor of each other."""
     return not (
         git.fast_forwardness(config, commit1, commit2)
@@ -218,7 +218,7 @@ def is_novel_merge(config: PhyloXConfig, commit1: str, commit2: str) -> bool:
     )
 
 
-def git_crossover(config: PhyloXConfig, seed: int, commit1: str, commit2: str) -> str:
+def git_crossover(config: EvoGitConfig, seed: int, commit1: str, commit2: str) -> str:
     """crossover between commit1 and commit2"""
     random.seed(seed)
     use_merge = random.choices(
@@ -232,7 +232,7 @@ def git_crossover(config: PhyloXConfig, seed: int, commit1: str, commit2: str) -
     return git.read_head_commit(config)
 
 
-def git_merge(config: PhyloXConfig, commit1: str, commit2: str) -> None:
+def git_merge(config: EvoGitConfig, commit1: str, commit2: str) -> None:
     git.checkout(config, commit1)
     git.merge_branches(config, commit2)
 
@@ -252,7 +252,7 @@ def git_merge(config: PhyloXConfig, commit1: str, commit2: str) -> None:
     assert not git.has_conflict(config)
 
 
-def git_rebase(config: PhyloXConfig, commit1: str, commit2: str) -> None:
+def git_rebase(config: EvoGitConfig, commit1: str, commit2: str) -> None:
     git.checkout(config, commit1)
     git.rebase_branches(config, commit2)
 
@@ -497,7 +497,7 @@ def llm_crossover(config, llm_backend, seeds, commits) -> list[str]:
     return offspring
 
 
-def load_vectors(config: PhyloXConfig, commits: list[str]) -> np.ndarray:
+def load_vectors(config: EvoGitConfig, commits: list[str]) -> np.ndarray:
     vectors = []
     for commit in commits:
         binary_data = git.read_file(config, commit, mode="binary")
@@ -509,7 +509,7 @@ def load_vectors(config: PhyloXConfig, commits: list[str]) -> np.ndarray:
 
 
 def vector_mutation(
-    config: PhyloXConfig, commits: list[str], mutation_func: callable
+    config: EvoGitConfig, commits: list[str], mutation_func: callable
 ) -> str:
     """Mutation of the individual"""
     vectors = load_vectors(config, commits)
@@ -524,7 +524,7 @@ def vector_mutation(
     return offspring
 
 
-def vector_direct_crossover(config: PhyloXConfig, seed: int, commits: list[str]) -> str:
+def vector_direct_crossover(config: EvoGitConfig, seed: int, commits: list[str]) -> str:
     vectors = []
     for commit in commits:
         binary_data = git.read_file(config, commit, mode="binary")
@@ -535,7 +535,7 @@ def vector_direct_crossover(config: PhyloXConfig, seed: int, commits: list[str])
     vectors = np.array(vectors)
 
 
-def migrate_from_human_tags(config: PhyloXConfig, migrate_count: int) -> list[str]:
+def migrate_from_human_tags(config: EvoGitConfig, migrate_count: int) -> list[str]:
     """Return migration candidates from human tags. The migrate_count set the upper limit of the number of candidates."""
     all_tags = git.list_tags(config)
     tags = [tag for tag in all_tags if tag.startswith("human")]
@@ -545,7 +545,7 @@ def migrate_from_human_tags(config: PhyloXConfig, migrate_count: int) -> list[st
     return commits
 
 
-def migrate_from_other_hosts(config: PhyloXConfig, migration_count: int) -> list[str]:
+def migrate_from_other_hosts(config: EvoGitConfig, migration_count: int) -> list[str]:
     """Return migration candidates from other hosts. The migration_count set the upper limit of the number of candidates."""
     remote_branches = git.list_branches(config, list_remote=True)
     git.merge_notes(config)
@@ -572,7 +572,7 @@ def migrate_from_other_hosts(config: PhyloXConfig, migration_count: int) -> list
     return commits, fitness
 
 
-def prune_commits(config: PhyloXConfig) -> None:
+def prune_commits(config: EvoGitConfig) -> None:
     """Prune the commits that are reachable."""
     git.prune(config)
 
@@ -594,7 +594,7 @@ def _construct_diff_comp_prompt(config, prev_commit, new_commit) -> str:
 
 
 def llm_diff_compare(
-    config: PhyloXConfig,
+    config: EvoGitConfig,
     llm_backend: Any,
     seeds: list[int],
     prev_commits: list[str],
@@ -630,7 +630,7 @@ def llm_diff_compare(
 
 
 def lint_code_base(
-    config: PhyloXConfig,
+    config: EvoGitConfig,
     commits: list[str],
     worktrees: Optional[list[str]] = None,
     overwrite: bool = False,

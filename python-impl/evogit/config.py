@@ -3,7 +3,7 @@ from typing import Optional, Any, Callable
 
 
 @dataclass
-class PhyloXConfig:
+class EvoGitConfig:
     num_objectives: int
     git_user_name: str
     git_user_email: str

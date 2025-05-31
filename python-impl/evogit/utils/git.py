@@ -7,7 +7,7 @@ import warnings
 import os
 import shutil
 import tempfile
-from phylox.config import PhyloXConfig
+from phylox.config import EvoGitConfig
 from typing import Optional, Union
 import re
 
@@ -48,7 +48,7 @@ def create_git_dir(git_dir, force_create=False) -> None:
         os.mkdir(git_dir, mode=0o755)
 
 
-def delete_remote_branches(config: PhyloXConfig) -> None:
+def delete_remote_branches(config: EvoGitConfig) -> None:
     fetch_from_remote(config, async_fetch=False)
     remote_branches = list_branches(config, list_remote=True)
     print(f"Delete the following remote branches: {remote_branches}")
@@ -67,7 +67,7 @@ def delete_remote_branches(config: PhyloXConfig) -> None:
         )
 
 
-def delete_remote_notes(config: PhyloXConfig) -> None:
+def delete_remote_notes(config: EvoGitConfig) -> None:
     fetch_notes_from_remote(config, async_fetch=False)
     remote_notes_namespaces = list_remote_notes_namespaces(config)
     print(f"Delete the following remote notes: {remote_notes_namespaces}")
@@ -88,7 +88,7 @@ def delete_remote_notes(config: PhyloXConfig) -> None:
         )
 
 
-def init_git_repo(config: PhyloXConfig) -> None:
+def init_git_repo(config: EvoGitConfig) -> None:
     git_dir = config.git_dir
 
     subprocess.run(
@@ -130,7 +130,7 @@ def init_git_repo(config: PhyloXConfig) -> None:
         delete_remote_notes(config)
 
 
-def clone_git_repo(config: PhyloXConfig) -> None:
+def clone_git_repo(config: EvoGitConfig) -> None:
     if config.remote_repo is None:
         raise ValueError("remote_repo is not set in the config.")
 
@@ -152,7 +152,7 @@ def clone_git_repo(config: PhyloXConfig) -> None:
     config_merge_driver(config)
 
 
-def config_merge_driver(config: PhyloXConfig) -> None:
+def config_merge_driver(config: EvoGitConfig) -> None:
     template = (
         '[merge "{name}"]\n'
         "\tname = phylox custom merge driver\n"
@@ -171,7 +171,7 @@ def config_merge_driver(config: PhyloXConfig) -> None:
 
 
 def get_commit_by_branch(
-    config: PhyloXConfig, branch: str, worktree: Optional[str] = None
+    config: EvoGitConfig, branch: str, worktree: Optional[str] = None
 ) -> str:
     cwd = worktree if worktree is not None else config.git_dir
     return (
@@ -187,18 +187,18 @@ def get_commit_by_branch(
 
 
 def get_commit_by_tag(
-    config: PhyloXConfig, tag: str, worktree: Optional[str] = None
+    config: EvoGitConfig, tag: str, worktree: Optional[str] = None
 ) -> str:
     return get_commit_by_branch(config, f"tags/{tag}", worktree)
 
 
-def read_head_commit(config: PhyloXConfig, worktree: Optional[str] = None) -> str:
+def read_head_commit(config: EvoGitConfig, worktree: Optional[str] = None) -> str:
     """Read the commit id of the current HEAD."""
     return get_commit_by_branch(config, "HEAD", worktree)
 
 
 def list_branches(
-    config: PhyloXConfig, list_remote: bool = False, ea_only: bool = True
+    config: EvoGitConfig, list_remote: bool = False, ea_only: bool = True
 ) -> list[str]:
     """List all branches in this repo.
     Parameters
@@ -248,7 +248,7 @@ def list_branches(
     return branches
 
 
-def list_tags(config: PhyloXConfig) -> list[str]:
+def list_tags(config: EvoGitConfig) -> list[str]:
     """List all tags in this repo."""
     tags = subprocess.run(
         ["git", "tag"],
@@ -261,7 +261,7 @@ def list_tags(config: PhyloXConfig) -> list[str]:
     return tags
 
 
-def delete_tags(config: PhyloXConfig, tags: list[str]) -> None:
+def delete_tags(config: EvoGitConfig, tags: list[str]) -> None:
     """Delete the specified tags."""
     if tags:
         subprocess.run(
@@ -272,7 +272,7 @@ def delete_tags(config: PhyloXConfig, tags: list[str]) -> None:
 
 
 def add_note(
-    config: PhyloXConfig, commit: str, note: str | bytes, overwrite: bool = False
+    config: EvoGitConfig, commit: str, note: str | bytes, overwrite: bool = False
 ) -> None:
     """Add a note to the current commit. If overwrite is True, force overwrite the existing note."""
     # the note is passed through stdin, so we use `-F -` to let git read from stdin
@@ -296,7 +296,7 @@ def add_note(
     )
 
 
-def append_note(config: PhyloXConfig, commit: str, note: str | bytes) -> None:
+def append_note(config: EvoGitConfig, commit: str, note: str | bytes) -> None:
     """Append a note to the current commit."""
     if isinstance(note, str):
         note = note.encode("utf-8")
@@ -311,7 +311,7 @@ def append_note(config: PhyloXConfig, commit: str, note: str | bytes) -> None:
     )
 
 
-def read_note(config: PhyloXConfig, commit: Optional[str]) -> Optional[str]:
+def read_note(config: EvoGitConfig, commit: Optional[str]) -> Optional[str]:
     """Read the note of the specified commit. If commit is None, read the note of the current HEAD.
     Return None if the note does not exist.
     """
@@ -333,7 +333,7 @@ def read_note(config: PhyloXConfig, commit: Optional[str]) -> Optional[str]:
 
 
 def update_file_in_worktree(
-    config: PhyloXConfig,
+    config: EvoGitConfig,
     worktree: str,
     new_content: Union[str, bytes],
     filename: Optional[str] = None,
@@ -361,7 +361,7 @@ def update_file_in_worktree(
 
 
 def add_file_in_worktree(
-    config: PhyloXConfig,
+    config: EvoGitConfig,
     worktree: str,
     new_content: Union[str, bytes],
     file_path: str,
@@ -386,7 +386,7 @@ def add_file_in_worktree(
 
 
 def commit_changes_in_worktree(
-    config: PhyloXConfig,
+    config: EvoGitConfig,
     worktree: str,
     commit_message: str,
 ):
@@ -419,7 +419,7 @@ def commit_changes_in_worktree(
 
 
 def update_file(
-    config: PhyloXConfig,
+    config: EvoGitConfig,
     commit: str,
     new_content: Union[str, bytes],
     commit_message: str,
@@ -458,7 +458,7 @@ def update_file(
     )
 
 
-def read_file(config: PhyloXConfig, commit: str, mode: str = "text") -> str | bytes:
+def read_file(config: EvoGitConfig, commit: str, mode: str = "text") -> str | bytes:
     """Read the content of the file in the specified commit."""
     completed_proc = subprocess.run(
         ["git", "show", f"{commit}:{config.filename}"],
@@ -475,11 +475,11 @@ def read_file(config: PhyloXConfig, commit: str, mode: str = "text") -> str | by
         raise ValueError("mode must be either 'text' or 'binary'.")
 
 
-def batch_read_files(config: PhyloXConfig, commits: list[str]) -> list[str]:
+def batch_read_files(config: EvoGitConfig, commits: list[str]) -> list[str]:
     return [read_file(config, commit) for commit in commits]
 
 
-def has_conflict(config: PhyloXConfig) -> bool:
+def has_conflict(config: EvoGitConfig) -> bool:
     """Return True if the current working directory has conflicts. Otherwise, return False."""
     status = subprocess.run(
         ["git", "status"], cwd=config.git_dir, capture_output=True, check=True
@@ -491,7 +491,7 @@ def has_conflict(config: PhyloXConfig) -> bool:
         return False
 
 
-def count_conflicts(config: PhyloXConfig, filename: Optional[str] = None) -> int:
+def count_conflicts(config: EvoGitConfig, filename: Optional[str] = None) -> int:
     """Count the number of conflicts in the current working directory."""
     if filename is None:
         filename = config.filename
@@ -502,7 +502,7 @@ def count_conflicts(config: PhyloXConfig, filename: Optional[str] = None) -> int
     return len(git_conflict_pattern.findall(content))
 
 
-def list_conflict_files(config: PhyloXConfig) -> list[str]:
+def list_conflict_files(config: EvoGitConfig) -> list[str]:
     """List all the files that have conflicts in the current working directory."""
     result = subprocess.run(
         ["git", "diff", "--name-only", "--diff-filter=U"],
@@ -516,7 +516,7 @@ def list_conflict_files(config: PhyloXConfig) -> list[str]:
     return conflict_files
 
 
-def checkout(config: PhyloXConfig, commit: str) -> None:
+def checkout(config: EvoGitConfig, commit: str) -> None:
     """Checkout the specified commit."""
     # -q is quiet, --detach is used to checkout the commit in detached HEAD mode
     subprocess.run(
@@ -528,7 +528,7 @@ def checkout(config: PhyloXConfig, commit: str) -> None:
     )
 
 
-def add_temp_worktree(config: PhyloXConfig, branch: str) -> str:
+def add_temp_worktree(config: EvoGitConfig, branch: str) -> str:
     """checkout the branch in a new worktree and return the path of the worktree."""
     # make a temporary directory if not exists
     worktree_dir = os.path.join(config.git_dir, ".phylox_evaluate")
@@ -550,7 +550,7 @@ def add_temp_worktree(config: PhyloXConfig, branch: str) -> str:
     return worktree
 
 
-def remove_temp_worktree(config: PhyloXConfig, worktree: str) -> None:
+def remove_temp_worktree(config: EvoGitConfig, worktree: str) -> None:
     """Remove the worktree of the branch."""
     subprocess.run(
         ["git", "worktree", "remove", "-f", worktree],
@@ -559,7 +559,7 @@ def remove_temp_worktree(config: PhyloXConfig, worktree: str) -> None:
     )
 
 
-def cleanup_temp_worktrees(config: PhyloXConfig) -> None:
+def cleanup_temp_worktrees(config: EvoGitConfig) -> None:
     """Remove all the worktrees in the .phylox_evaluate directory."""
     worktree_dir = os.path.join(config.git_dir, ".phylox_evaluate")
     if os.path.exists(worktree_dir):
@@ -572,7 +572,7 @@ def cleanup_temp_worktrees(config: PhyloXConfig) -> None:
     )
 
 
-def merge_branches(config: PhyloXConfig, commit: str) -> None:
+def merge_branches(config: EvoGitConfig, commit: str) -> None:
     """merge the commit specified by the commit_id to the current branch."""
     # don't check the return code because the merge may fail
     subprocess.run(
@@ -583,7 +583,7 @@ def merge_branches(config: PhyloXConfig, commit: str) -> None:
     )
 
 
-def rebase_branches(config: PhyloXConfig, commit: str) -> None:
+def rebase_branches(config: EvoGitConfig, commit: str) -> None:
     """rebase the current branch on the commit specified by the commit_id."""
     # don't check the return code because the rebase may fail
     # GIT_EDITOR=true is used to disable the interactive editor
@@ -597,7 +597,7 @@ def rebase_branches(config: PhyloXConfig, commit: str) -> None:
     )
 
 
-def continue_merge(config: PhyloXConfig) -> None:
+def continue_merge(config: EvoGitConfig) -> None:
     """Continue the merge process."""
     subprocess.run(
         ["git", "merge", "--continue"],
@@ -609,7 +609,7 @@ def continue_merge(config: PhyloXConfig) -> None:
     )
 
 
-def continue_rebase(config: PhyloXConfig) -> None:
+def continue_rebase(config: EvoGitConfig) -> None:
     """Continue the rebase process."""
     # GIT_EDITOR=true is used to disable the interactive editor
     # and accept the default commit message
@@ -623,7 +623,7 @@ def continue_rebase(config: PhyloXConfig) -> None:
 
 
 def handle_conflict(
-    config: PhyloXConfig, strategy: list[bool], filename: Optional[str] = None
+    config: EvoGitConfig, strategy: list[bool], filename: Optional[str] = None
 ) -> None:
     """Handle the conflict by accept ours or theirs.
     The strategy is a list of bool values, where True means accepting ours, and False means accepting theirs.
@@ -652,7 +652,7 @@ def handle_conflict(
 
 
 def branches_track_commits(
-    config: PhyloXConfig, branch_names: list[str], commits: list[str]
+    config: EvoGitConfig, branch_names: list[str], commits: list[str]
 ) -> None:
     """Create branches that track the specified commits."""
     processes = []
@@ -670,7 +670,7 @@ def branches_track_commits(
         assert proc.returncode == 0, "Failed to create branch that tracks the commit."
 
 
-def fast_forwardness(config: PhyloXConfig, commit1: str, commit2: str) -> bool:
+def fast_forwardness(config: EvoGitConfig, commit1: str, commit2: str) -> bool:
     """Check if commit1 is able to fast-forward to commit2. Return True if it is able to fast-forward."""
     code = subprocess.run(
         ["git", "merge-base", "--is-ancestor", commit1, commit2],
@@ -681,7 +681,7 @@ def fast_forwardness(config: PhyloXConfig, commit1: str, commit2: str) -> bool:
     return code == 0
 
 
-def pairwise_distances(config: PhyloXConfig, commits: list[str]) -> list[list[int]]:
+def pairwise_distances(config: EvoGitConfig, commits: list[str]) -> list[list[int]]:
     """Calculate the pairwise distances between the commits.
     Return a matrix where the element at (i, j) is the distance between commit i and commit j.
     The matrix is guaranteed to be symmetric.
@@ -708,7 +708,7 @@ def pairwise_distances(config: PhyloXConfig, commits: list[str]) -> list[list[in
 
 
 def pairwise_shared_merge_base_distances(
-    config: PhyloXConfig, commits: list[str]
+    config: EvoGitConfig, commits: list[str]
 ) -> list[list[int]]:
     """Calculate the pairwise distances from the merge bases to the initial commits."""
     n_commits = len(commits)
@@ -750,7 +750,7 @@ def pairwise_shared_merge_base_distances(
 
 
 def push_to_remote(
-    config: PhyloXConfig, branches: list[str], async_push: bool = True
+    config: EvoGitConfig, branches: list[str], async_push: bool = True
 ) -> subprocess.Popen | None:
     """Push the branch to the remote repository along side with the notes."""
     cmd = ["git", "push", "-q", "-f", "--atomic", "origin"]
@@ -775,7 +775,7 @@ def push_to_remote(
 
 
 def push_notes_to_remote(
-    config: PhyloXConfig, async_push: bool = True
+    config: EvoGitConfig, async_push: bool = True
 ) -> subprocess.Popen | None:
     """Push the notes to the remote repository."""
     remote_notes_namespace = f"refs/notes/{config.hostname}-commits"
@@ -806,7 +806,7 @@ def push_notes_to_remote(
 
 
 def fetch_from_remote(
-    config: PhyloXConfig, prune=True, async_fetch: bool = True
+    config: EvoGitConfig, prune=True, async_fetch: bool = True
 ) -> subprocess.Popen | None:
     """Fetch the notes from the remote repository."""
     cmd = ["git", "fetch", "-q"]
@@ -832,7 +832,7 @@ def fetch_from_remote(
         )
 
 
-def list_remote_notes_namespaces(config: PhyloXConfig) -> list[str]:
+def list_remote_notes_namespaces(config: EvoGitConfig) -> list[str]:
     """List all the remote notes namespaces."""
     refs = subprocess.run(
         ["git", "notes", "get-ref"],
@@ -846,7 +846,7 @@ def list_remote_notes_namespaces(config: PhyloXConfig) -> list[str]:
     return notes_namespaces
 
 
-def merge_notes(config: PhyloXConfig) -> None:
+def merge_notes(config: EvoGitConfig) -> None:
     """Merge the notes from the remote repository."""
     remote_notes_namespaces = list_remote_notes_namespaces(config)
     for remote_notes_namespace in remote_notes_namespaces:
@@ -857,7 +857,7 @@ def merge_notes(config: PhyloXConfig) -> None:
 
 
 def fetch_notes_from_remote(
-    config: PhyloXConfig, async_fetch: bool = True
+    config: EvoGitConfig, async_fetch: bool = True
 ) -> subprocess.Popen | None:
     """Fetch the notes from the remote repository."""
     cmd = ["git", "fetch", "-q", "origin", "refs/notes/*:refs/notes/*"]
@@ -880,7 +880,7 @@ def fetch_notes_from_remote(
 
 
 def diff_view(
-    config: PhyloXConfig, commit1: str, commit2: str, context_lines: int = 8
+    config: EvoGitConfig, commit1: str, commit2: str, context_lines: int = 8
 ) -> None:
     """View the diff between two commits."""
     diff = subprocess.run(
@@ -899,7 +899,7 @@ def diff_view(
     return diff
 
 
-def has_staged_changes(config: PhyloXConfig, worktree: str) -> bool:
+def has_staged_changes(config: EvoGitConfig, worktree: str) -> bool:
     """Check if there are staged changes in the specified worktree."""
     changes = subprocess.run(
         ["git", "diff", "--cached", "--name-only"],
@@ -915,7 +915,7 @@ def has_staged_changes(config: PhyloXConfig, worktree: str) -> bool:
 
 
 def list_files(
-    config: PhyloXConfig, commit: str, return_format: str = "string"
+    config: EvoGitConfig, commit: str, return_format: str = "string"
 ) -> list[str]:
     """List all the files in the specified commit."""
     files = subprocess.run(
@@ -934,7 +934,7 @@ def list_files(
         raise ValueError("return_format must be either 'string' or 'list'.")
 
 
-def prune(config: PhyloXConfig) -> None:
+def prune(config: EvoGitConfig) -> None:
     """Run git prune."""
     gc_log = os.path.join(config.git_dir, ".git", "gc.log")
     if os.path.exists(gc_log):
