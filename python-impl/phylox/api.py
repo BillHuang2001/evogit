@@ -371,10 +371,25 @@ def _gather_info(config, commits) -> list[dict[str, Any]]:
             "html",
             "css",
             "scss",
+            # markdown
+            "md",
         ]
         text_files = [
             file for file in files if file.split(".")[-1] in text_file_extensions
         ]
+        # Do NOT edit certain files
+        blacklist = [
+            "README.md",
+            "LICENSE",
+            "LICENSE.txt",
+            "LICENSE.md",
+            "CONTRIBUTING.md",
+            "CONTRIBUTING.txt",
+            "CONTRIBUTING",
+            "package.json",
+            "package-lock.json",
+        ]
+        text_files = [file for file in text_files if file not in blacklist]
         random_file = random.choice(text_files)
         random_file_path = os.path.join(worktree, random_file)
         with open(random_file_path, "r") as f:
