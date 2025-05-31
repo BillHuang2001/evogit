@@ -188,23 +188,30 @@ def get_python_feedback(project_path: str, async_run: bool = False):
     If async_run is True, run Ruff in the background and return the handler.
     Otherwise, run Ruff synchronously and return the output as string.
     """
+    # Disable the current python virtual environment
+    clean_env = os.environ.copy()
+    clean_env.pop("VIRTUAL_ENV", None)
+    clean_env["UV_CACHE_DIR"] = "/tmp/uv_cache"
+    # sed "s|$(pwd)/||" is used to replace the absolute path with a relative one
     if async_run:
         handler = subprocess.Popen(
-            "uv run pyright .",
+            'uv run pyright . | sed "s|$(pwd)/||"',
             text=True,
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
             cwd=project_path,
             shell=True,
+            env=clean_env,
         )
         return handler
     else:
         lint_output = subprocess.run(
-            "uv run pyright .",
+            'uv run pyright . | sed "s|$(pwd)/||"',
             check=True,
             text=True,
             capture_output=True,
             cwd=project_path,
             shell=True,
+            env=clean_env,
         ).stdout
         return lint_output

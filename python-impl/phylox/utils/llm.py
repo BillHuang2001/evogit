@@ -76,6 +76,10 @@ class TGIBackend:
         raise Exception("Failed to query TGI")
 
     def query(self, seeds, queries):
+        if len(queries) == 0:
+            self.logger.warning("No queries to process.")
+            return []
+
         self.logger.info("Querying LLM model...")
         for query in queries:
             self.logger.info(query + "\n")
