@@ -60,13 +60,15 @@ The final web page demonstrates a polished UI with support for both light and da
 
 ### [🧠 Meta-Level Code Synthesis](https://github.com/BillHuang2001/evogit_llm) -- [link](https://github.com/BillHuang2001/evogit_web)
 
-> AI agents iteratively evolve Python code to solve the **Bin Packing Problem**, leveraging LLMs and evolutionary algorithms.
+> AI agents iteratively evolve a **meta-level algorithm designer**, which itself generates and refines a solver for the classic **Bin Packing Problem**.
+> This creates a two-layer pipeline:
+> **EvoGit → Auto Algorithm Designer → Bin Packing Solver**
 > A human manager provided an initial setup and ~5 rounds of feedback throughout the optimization process.
 
 <details>
   <summary><strong>🔍 Result (click to expand)</strong></summary>
 
-The AI-generated solution efficiently minimizes bin usage, as shown in the final output script:
+The AI-generated automatic algorithm design program efficiently found a solver that minimizes bin usage, as shown in the final output script:
 
 ```python
 def bin_packing_solver(items: list[float], budget: int) -> list[int]:
@@ -143,6 +145,7 @@ EvoGit uses Git not only as a version control tool, but also as a transparent wi
 3. 🔍 Each agent branch contains an independent development trajectory. You can explore these using GitHub’s commit history or local Git tools.
 4. 📈 Git diffs and logs reveal the precise changes made in each commit.
 5. 🧭 Use `git log --graph` or GitHub’s branch visualization (under Insights -> Network) to see how code diverged and converged over time.
+
 <details>
   <summary><strong>🔍 Example Git Graph (click to expand)</strong></summary>
 
