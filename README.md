@@ -44,12 +44,14 @@ Each agent independently proposes, mutates, and merges code changes, forming a f
 
 For detailed methodology and experimental results, refer to our [paper](https://arxiv.org/abs/2506.02049).
 
+
 ## ✨ Key Features
 
-* ⚙️ **Git-Native Evolution**: All code changes are tracked as Git commits and branches, leveraging Git as the core infrastructure.
-* 🧠 **Fully Autonomous Multi-Agent Development**: Decentralized agents simulate independent developers, evolving codebases without coordination.
-* 🌿 **Transparent Lineage Tracking**: Every commit, branch, and merge is fully version-controlled and inspectable.
-* 🔁 **Minimal Human Supervision**: After initialization, the system progresses with only sparse, strategic human feedback.
+* 🧠 **Fully Autonomous Multi-Agent Development**: A population of coding agents collaboratively develops software, with humans acting only as high-level product managers.
+* 🔁 **Minimal Human Intervention**: Once initialized, the system evolves independently, requiring only occasional strategic input or feedback from humans.
+* ⚙️ **Git-Native Code Evolution**: All changes are tracked through Git commits and branches, using Git as both the execution backbone and the interface between human and agents.
+* 🌿 **Transparent Evolutionary Lineage**: Every commit, branch, merge, and timestamp is fully version-controlled, enabling complete traceability and auditability of the development process.
+
 
 ## 📦 Live Demos
 
