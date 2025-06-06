@@ -26,6 +26,15 @@
 ---
 
 
+## 👋 Table of Contents
+
+1. [🚀 Overview](#🚀-overview)
+2. [✨ Key Features](#✨-key-features)
+3. [📦 Live Demos](#📦-live-demos)
+4. [🧬 How to Explore the Results](#🧬-how-to-explore-the-results)
+5. [📚 Paper](#📚-paper)
+
+
 
 ## 🚀 Overview
 
