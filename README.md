@@ -15,6 +15,12 @@
   <a href="https://github.com/BillHuang2001/evogit">
     <img src="https://img.shields.io/github/stars/BillHuang2001/evogit?style=social" alt="GitHub Stars">
   </a>
+  <a href="https://discord.gg/Vbtgcpy7G4">
+    <img src="https://img.shields.io/badge/discord-evogit-%235865f2?logo=discord" alt="Discord Server">
+  </a>
+  <a href="https://qm.qq.com/q/vTPvoMUGAw">
+    <img src="https://img.shields.io/badge/QQ-297969717-%231db4f4?logo=tencentqq" alt="QQ Group">
+  </a>
 </p>
 
 ---
