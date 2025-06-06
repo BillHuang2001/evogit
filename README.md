@@ -38,15 +38,97 @@ For detailed methodology and experimental results, refer to our [paper](https://
 
 ## 📦 Live Demos
 
-See EvoGit in action on two real-world tasks:
+Explore how **EvoGit** enables collaborative AI development across two real-world projects:
 
-### [📃 EvoGit Web](https://github.com/BillHuang2001/evogit_web)
+### [📃 Web Applicaiton Development](https://github.com/BillHuang2001/evogit_web) -- [link](https://github.com/BillHuang2001/evogit_web)
 
-> A multi-agent system collaboratively builds a complete, interactive one-page website—from layout to animation to dark mode. The human product manager initialized the repo and gave \~10 feedbacks over the course of development.
+> A multi-agent AI system collaboratively builds a complete one-page interactive website—from layout and UI to animations and dark mode.
+> The project was initialized by a human product manager and guided with ~10 feedback interventions.
 
-### [🧠 EvoGit LLM](https://github.com/BillHuang2001/evogit_llm)
+<details>
+  <summary><strong>🔍 Result (click to expand)</strong></summary>
 
-> Agents develop an LLM-powered optimizer that evolves code to solve the bin packing problem. The human product manager provided an initial setup and \~5 pieces of feedback.
+The final web page demonstrates a polished UI with support for both light and dark themes.
+
+![EvoGit Example Web Page Light Mode](static/screenshot/web_final_light.png)
+![EvoGit Example Web Page Dark Mode](static/screenshot/web_final_dark.png)
+
+</details>
+
+---
+
+### [🧠 Meta-Level Code Synthesis](https://github.com/BillHuang2001/evogit_llm) -- [link](https://github.com/BillHuang2001/evogit_web)
+
+> AI agents iteratively evolve Python code to solve the **Bin Packing Problem**, leveraging LLMs and evolutionary algorithms.
+> A human manager provided an initial setup and ~5 rounds of feedback throughout the optimization process.
+
+<details>
+  <summary><strong>🔍 Result (click to expand)</strong></summary>
+
+The AI-generated solution efficiently minimizes bin usage, as shown in the final output script:
+
+```python
+def bin_packing_solver(items: list[float], budget: int) -> list[int]:
+    import time
+
+    if not items or not all(0 <= w <= 1 for w in items):
+        return []
+
+    start_time = time.time()
+
+    items_sorted = sorted(enumerate(items), key=lambda x: x[1], reverse=True)
+    bins = []
+    bin_indices = [-1] * len(items)
+
+    for index, weight in items_sorted:
+        placed = False
+        for bin_index, bin_weight in enumerate(bins):
+            if bin_weight + weight <= 1:
+                bins[bin_index] += weight
+                bin_indices[index] = bin_index
+                placed = True
+                break
+        if not placed:
+            bins.append(weight)
+            bin_indices[index] = len(bins) - 1
+
+    best_solution = bin_indices[:]
+    best_bin_count = len(bins)
+
+    def refine_solution():
+        nonlocal best_solution, best_bin_count
+        for _ in range(100):  # attempt refinement a number of times
+            new_bins = []
+            new_bin_indices = [-1] * len(items)
+            new_solution = []
+            for i in range(len(items)):
+                weight = items[i]
+                placed = False
+                for bi in range(len(new_bins)):
+                    if new_bins[bi] + weight <= 1:
+                        new_bins[bi] += weight
+                        new_bin_indices[i] = bi
+                        placed = True
+                        break
+                if not placed:
+                    new_bins.append(weight)
+                    new_bin_indices[i] = len(new_bins) - 1
+            new_bin_count = len(new_bins)
+
+            if new_bin_count < best_bin_count:
+                best_solution = new_bin_indices
+                best_bin_count = new_bin_count
+
+            if (time.time() - start_time) * 1000 > budget:
+                break
+
+    refine_solution()
+
+    return best_solution
+```
+
+The optimized code is automatically saved as `best_solution.py` after the search process completes.
+</details>
 
 
 ## 🧬 How to Explore the Results
