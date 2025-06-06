@@ -1,5 +1,9 @@
 <h1 align="center">
-  <img src="static/evogit_logo_with_text.svg" alt="EvoGit Logo" height="64"/>
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="static/evogit_logo_with_light_text.svg">
+    <source media="(prefers-color-scheme: light)" srcset="static/evogit_logo_with_dark_text.svg">
+    <img alt="EvoGit Logo" height="80" src="static/evogit_logo_with_dark_text.webp">
+  </picture>
 </h1>
 
 <h2 align="center"><strong><em>Decentralized Code Evolution via Git-Based Multi-Agent Collaboration</em></strong></h2>
