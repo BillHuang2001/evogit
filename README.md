@@ -25,6 +25,14 @@
 
 ---
 
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="static/animated_evogit_light_text.avif">
+  <source media="(prefers-color-scheme: light)" srcset="static/animated_evogit_dark_text.avif">
+  <img alt="EvoGit Animation" height="50%" src="static/animated_evogit_dark_text.avif">
+</picture>
+
+---
+
 
 ## 👋 Table of Contents
 
