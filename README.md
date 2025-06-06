@@ -51,8 +51,8 @@ For more details, please visit the respective GitHub repositories and inspect th
 
 The final web page demonstrates a polished UI with support for both light and dark themes.
 
-![EvoGit Example Web Page Light Mode](static/screenshot/web_final_light.png)
-![EvoGit Example Web Page Dark Mode](static/screenshot/web_final_dark.png)
+![EvoGit Example Web Page Light Mode](static/screenshot/web_final_light.webp)
+![EvoGit Example Web Page Dark Mode](static/screenshot/web_final_dark.webp)
 
 </details>
 
@@ -142,7 +142,12 @@ EvoGit uses Git not only as a version control tool, but also as a transparent wi
    where `i` = host node index, `j` = agent index.
 3. 🔍 Each agent branch contains an independent development trajectory. You can explore these using GitHub’s commit history or local Git tools.
 4. 📈 Git diffs and logs reveal the precise changes made in each commit.
-5. 🧭 Use `git log --graph` or GitHub’s branch visualization to see how code diverged and converged over time.
+5. 🧭 Use `git log --graph` or GitHub’s branch visualization (under Insights -> Network) to see how code diverged and converged over time.
+<details>
+  <summary><strong>🔍 Example Git Graph (click to expand)</strong></summary>
+
+  ![EvoGit Example Git Graph](static/screenshot/github_network.webp)
+</details>
 
 All changes are versioned and traceable. Every commit represents an autonomous decision by an agent—captured, auditable, and reproducible through Git.
 
