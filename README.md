@@ -38,7 +38,8 @@ For detailed methodology and experimental results, refer to our [paper](https://
 
 ## 📦 Live Demos
 
-Explore how **EvoGit** enables collaborative AI development across two real-world projects:
+Explore how **EvoGit** enables collaborative AI development across two real-world projects.
+For more details, please visit the respective GitHub repositories and inspect the Git history to see how multiple agents evolved the code.
 
 ### [📃 Web Applicaiton Development](https://github.com/BillHuang2001/evogit_web) -- [link](https://github.com/BillHuang2001/evogit_web)
 
