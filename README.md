@@ -60,10 +60,11 @@ For detailed methodology and experimental results, refer to our [paper](https://
 
 ## ✨ Key Features
 
-* 🧠 **Fully Autonomous Multi-Agent Development**: A population of coding agents collaboratively develops software, with humans acting only as high-level product managers.
-* 🔁 **Minimal Human Intervention**: Once initialized, the system evolves independently, requiring only occasional strategic input or feedback from humans.
-* ⚙️ **Git-Native Code Evolution**: All changes are tracked through Git commits and branches, using Git as both the execution backbone and the interface between human and agents.
-* 🌿 **Transparent Evolutionary Lineage**: Every commit, branch, merge, and timestamp is fully version-controlled, enabling complete traceability and auditability of the development process.
+* 🧠 **Decentralized Coordination**: Agents operate independently and coordinate organically through the shared version graph. This resembles stigmergy in biological systems, where interactions are indirect and mediated by the environment.
+* ⚙️ **Git-Native Evolution**: The entire framework is built on Git. Evolutionary concepts map directly to Git primitives, making the process inherently compatible with standard developer tools.
+* 🌿 **Traceable & Auditable Lineage**: Every edit, merge, and decision is recorded as an immutable Git commit. This provides full transparency and reproducibility of the entire development process.
+* 🤝 **Sparse Human Oversight**: The human's role shifts from a coder to a high-level **Product Manager**. You define initial goals and provide periodic, lightweight feedback to prune unproductive branches and promote promising ones.
+
 
 
 ## 📦 Live Demos
