@@ -88,7 +88,7 @@ The final web page demonstrates a polished UI with support for both light and da
 
 ---
 
-### [🧠 Meta-Level Code Synthesis](https://github.com/BillHuang2001/evogit_llm) -- [link](https://github.com/BillHuang2001/evogit_web)
+### [🧠 Meta-Level Code Synthesis](https://github.com/BillHuang2001/evogit_llm) -- [link](https://github.com/BillHuang2001/evogit_llm)
 
 > AI agents iteratively evolve a **meta-level algorithm designer**, which itself generates and refines a solver for the classic **Bin Packing Problem**.
 > This creates a two-layer pipeline:
