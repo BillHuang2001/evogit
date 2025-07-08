@@ -51,9 +51,9 @@
 
 ## 🚀 Overview
 
-**EvoGit** is a decentralized, Git-native framework for autonomous software development. It leverages a population of LLM-based agents that evolve code collaboratively—without centralized control—mirroring principles of natural selection and mutation.
+**EvoGit** is a decentralized multi-agent framework that reimagines software development as a collaborative, evolutionary process. It deploys a population of independent coding agents that evolve a shared codebase asynchronously, without centralized coordination, explicit message passing, or shared memory.
 
-Each agent independently proposes, mutates, and merges code changes, forming a fully traceable version graph managed by Git.
+All coordination emerges implicitly through a **Git-based phylogenetic graph** that tracks the complete version lineage. This graph allows agents to read from and write to the repository, enabling scalable parallel exploration while preserving a consistent, auditable history of every change.
 
 For detailed methodology and experimental results, refer to our [paper](https://arxiv.org/abs/2506.02049).
 
