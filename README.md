@@ -1,12 +1,20 @@
-<h1 align="center">
+<p align="center">
   <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="static/evogit_logo_with_light_text.svg">
-    <source media="(prefers-color-scheme: light)" srcset="static/evogit_logo_with_dark_text.svg">
-    <img alt="EvoGit Logo" height="80" src="static/evogit_logo_with_dark_text.webp">
+    <source type="image/avif" srcset="static/EvoGit_cover_dark.avif">
+    <img alt="EvoGit Cover Image" src="static/EvoGit_cover_dark.png">
   </picture>
-</h1>
+</p>
 
-<h2 align="center"><strong><em>Decentralized Code Evolution via Git-Based Multi-Agent Collaboration</em></strong></h2>
+<h1 align="center"><strong><em>Decentralized Code Evolution via Git-Based Multi-Agent Collaboration</em></strong></h2>
+
+<h2 align="center">🏆 EvoGit: 1st Place in AgentX Multi-Agent Track</h1>
+
+<p align="center">
+  <em>
+    Winner of the <a href="https://rdi.berkeley.edu/agentx/">Multi-Agent Track</a> at the
+    <a href="https://rdi.berkeley.edu/events/agentic-ai-summit">AgentX Competition (Agentic AI Summit)</a>.
+  </em>
+</p>
 
 <p align="center">
   <a href="https://www.arxiv.org/abs/2506.02049">
