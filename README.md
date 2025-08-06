@@ -5,9 +5,9 @@
   </picture>
 </p>
 
-<h1 align="center"><strong><em>Decentralized Code Evolution via Git-Based Multi-Agent Collaboration</em></strong></h2>
+<h2 align="center"><strong><em>Decentralized Code Evolution via Git-Based Multi-Agent Collaboration</em></strong></h2>
 
-<h2 align="center">🏆 EvoGit: 1st Place in AgentX Multi-Agent Track</h1>
+<h3 align="center">🏆 EvoGit: 1st Place in AgentX Multi-Agent Track</h3>
 
 <p align="center">
   <em>
