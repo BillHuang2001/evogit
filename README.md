@@ -201,3 +201,7 @@ All changes are versioned and traceable. Every commit represents an autonomous d
 
 Read the full framework design, evaluation methodology, and results in our paper:
 - **[ArXiv:2506.02049](https://arxiv.org/abs/2506.02049)**
+
+## 📢 Current Status
+
+The project is actively being developed and improved. We are currently working on the next version internally with significant enhancements. Stay tuned for future updates!
