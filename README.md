@@ -1,7 +1,7 @@
 <p align="center">
   <picture>
-    <source type="image/avif" srcset="static/EvoGit_cover_dark.avif">
-    <img alt="EvoGit Cover Image" src="static/EvoGit_cover_dark.png">
+    <source type="image/avif" srcset="static/evogit_new_cover.avif">
+    <img alt="EvoGit Cover Image" src="static/evogit_new_cover.png">
   </picture>
 </p>
 
